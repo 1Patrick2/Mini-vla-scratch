@@ -1,0 +1,6 @@
+data:
+  dataset_type: episode_robot
+  data_root: data/episodes
+  image_size: 128
+  state_dim: 7
+  action_dim: 7

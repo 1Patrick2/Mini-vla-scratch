@@ -1,0 +1,25 @@
+project:
+  name: mini-vla-from-scratch
+  seed: 42
+
+paths:
+  data_root: data
+  output_root: outputs
+
+model:
+  name: mini_vla_cnn_gru
+  image_size: 64
+  vocab_size: 128
+  max_text_len: 16
+  state_dim: 2
+  action_dim: 2
+
+data:
+  dataset_type: toy_2d
+  data_root: data/toy_2d
+  batch_size: 64
+
+train:
+  epochs: 1
+  lr: 0.001
+  device: cpu

@@ -1,0 +1,24 @@
+model:
+  name: mini_vla_cnn_gru
+  image_size: 64
+  vocab_size: 128
+  max_text_len: 16
+  state_dim: 2
+  action_dim: 2
+  vision_encoder:
+    type: small_cnn
+    output_dim: 128
+  language_encoder:
+    type: gru
+    embed_dim: 64
+    hidden_dim: 128
+  state_encoder:
+    type: mlp
+    hidden_dim: 64
+    output_dim: 64
+  fusion:
+    type: concat_mlp
+    hidden_dim: 256
+  action_head:
+    type: continuous_mlp
+    output_dim: 2

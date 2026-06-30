@@ -1,0 +1,10 @@
+base: ../base.yaml
+
+data:
+  batch_size: 64
+
+train:
+  epochs: 50
+  lr: 0.001
+  device: cpu
+  num_workers: 2

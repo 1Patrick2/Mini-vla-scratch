@@ -1,0 +1,1 @@
+"""Single-sample prediction placeholder."""

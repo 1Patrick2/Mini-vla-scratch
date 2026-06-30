@@ -1,0 +1,1 @@
+"""State encoder placeholder."""

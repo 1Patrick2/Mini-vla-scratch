@@ -1,0 +1,1 @@
+"""Complete MiniVLA model placeholder."""
