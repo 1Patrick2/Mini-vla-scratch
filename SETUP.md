@@ -49,27 +49,52 @@ pip install -r requirements-dev.txt
 pip install -e .
 ```
 
-## 4. Verify Installation
+## 4. One-Command Setup
 
-Run unit tests:
+Linux / WSL:
 
 ```bash
+bash setup_env.sh
+```
+
+Windows PowerShell:
+
+```powershell
+.\setup_env.ps1
+```
+
+## 5. Verify Installation
+
+```bash
+# Run unit tests
 pytest
-```
 
-Check package import:
-
-```bash
+# Check package import
 python -c "import mini_vla; print('mini_vla import OK')"
+
+# Dry-run training (Stage 0 skeleton)
+python scripts/train.py --config configs/train/debug.yaml --dry-run
 ```
 
-Run a dry training command:
+## 6. Stage 1 Preview (after Stage 1 is implemented)
+
+Generate toy 2D data and load it:
 
 ```bash
-python scripts/train.py --config configs/train/debug.yaml
+python scripts/generate_toy_data.py --config configs/data/toy_2d.yaml --num-episodes 100
+
+python -c "
+from mini_vla.datasets.toy_2d_dataset import Toy2DDataset
+ds = Toy2DDataset('data/toy_2d')
+sample = ds[0]
+print('Keys:', list(sample.keys()))
+print('Image shape:', sample['image'].shape)
+"
 ```
 
-## 5. Project Outputs
+> **Note:** These commands are placeholders in Stage 0. Toy data generation will be implemented in Stage 1.
+
+## 7. Project Outputs
 
 Generated files are stored under:
 
@@ -90,3 +115,44 @@ data/
 ```
 
 Large files should not be committed to Git.
+
+## 8. Common Problems
+
+### PyTorch is not installed correctly
+
+Install PyTorch according to your CUDA version from the official PyTorch website.
+For CPU-only usage:
+
+```bash
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+```
+
+### Import error: `mini_vla` not found
+
+Run `pip install -e .` from the project root. This installs the package in editable mode.
+
+### Dataset not found
+
+Generate toy data first once Stage 1 is implemented:
+
+```bash
+python scripts/generate_toy_data.py --config configs/data/toy_2d.yaml --num-episodes 100
+```
+
+### CUDA out of memory
+
+Use the debug config which uses a smaller batch size:
+
+```bash
+python scripts/train.py --config configs/train/debug.yaml --dry-run
+```
+
+Or reduce `batch_size` in your config file.
+
+### Windows PowerShell execution policy
+
+If you get an execution policy error when activating `.venv\Scripts\Activate.ps1`, run:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
