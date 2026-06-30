@@ -10,7 +10,8 @@
 | pyproject.toml with dev tool config | ✅ Complete |
 | Config system (loader + schema) | ✅ Complete |
 | Training CLI dry-run | ✅ Complete |
-| Action clipping / safety wrapper | ✅ Complete |
+| Action clipping utility | ✅ Complete |
+| Safety wrapper | ⏳ Placeholder, planned for later stage |
 | Basic unit tests (4 passing) | ✅ Complete |
 | Environment scripts (conda/venv/WSL/Windows) | ✅ Complete |
 
@@ -30,16 +31,34 @@
 - `mini_vla/datasets/transforms.py`
 - `tests/test_dataset.py`
 
-**Data format:**
+**Data format (per-episode):**
 ```
 data/toy_2d/
-├── episodes.json        # episode index metadata
-└── frames/
+└── episodes/
     ├── ep_000000/
-    │   ├── 000000.png
-    │   └── ...
+    │   ├── frames/
+    │   │   ├── 000000.png
+    │   │   └── ...
+    │   └── episode.json
     └── ep_000001/
-        └── ...
+        ├── frames/
+        └── episode.json
+```
+
+Each `episode.json` contains per-step samples:
+```json
+{
+  "episode_id": "ep_000000",
+  "instruction": "move red object to target",
+  "steps": [
+    {
+      "frame": "frames/000000.png",
+      "state": [0.25, 0.40],
+      "action": [0.03, -0.01],
+      "target": [0.80, 0.20]
+    }
+  ]
+}
 ```
 
 **Command:**

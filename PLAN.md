@@ -139,14 +139,31 @@ python scripts/train.py --config configs/train/debug.yaml --dry-run
 
 ```
 data/toy_2d/
-├── episodes.json        # 元数据索引
-└── frames/
+└── episodes/
     ├── ep_000000/
-    │   ├── 000000.png
-    │   ├── 000001.png
-    │   └── ...
+    │   ├── frames/
+    │   │   ├── 000000.png
+    │   │   └── ...
+    │   └── episode.json
     └── ep_000001/
-        └── ...
+        ├── frames/
+        └── episode.json
+```
+
+Each `episode.json`:
+```json
+{
+  "episode_id": "ep_000000",
+  "instruction": "move red object to target",
+  "steps": [
+    {
+      "frame": "frames/000000.png",
+      "state": [0.25, 0.40],
+      "action": [0.03, -0.01],
+      "target": [0.80, 0.20]
+    }
+  ]
+}
 ```
 
 ### 文件变更
