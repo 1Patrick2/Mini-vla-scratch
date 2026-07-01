@@ -7,6 +7,7 @@ from mini_vla.models.language_encoder import (
     LLMTextEncoder,
     MockLLMTextEncoder,
 )
+from mini_vla.models.mini_vla import MiniVLA
 from mini_vla.models.state_encoder import StateEncoder
 from mini_vla.models.vision_encoder import SmallCNNVisionEncoder
 
@@ -18,4 +19,5 @@ __all__ = [
     "StateEncoder",
     "FusionMLP",
     "ActionHead",
+    "MiniVLA",
 ]
