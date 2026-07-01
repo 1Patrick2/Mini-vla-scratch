@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from mini_vla.datasets import Toy2DDataset, tokenize
+from mini_vla.datasets.collate import collate_toy_2d
 from mini_vla.datasets.transforms import VOCAB
 
 
@@ -77,3 +78,47 @@ class TestToy2DDataset:
         sample = ds[0]
         assert isinstance(sample["instruction"], str)
         assert len(sample["instruction"]) > 0
+
+class TestCollateToy2D:
+    """DataLoader collation — batches individual samples."""
+
+    @pytest.fixture(autouse=True)
+    def _generate_data(self, tmp_path):
+        from scripts.generate_toy_data import generate_toy_data
+        self.data_root = generate_toy_data(
+            output_root=tmp_path,
+            num_episodes=2,
+            max_steps=4,
+            image_size=64,
+            seed=42,
+        )
+        self.ds = Toy2DDataset(self.data_root)
+
+    def test_collate_returns_batch_dict(self):
+        samples = [self.ds[i] for i in range(4)]
+        batch = collate_toy_2d(samples)
+        assert isinstance(batch, dict)
+
+    def test_batch_image_shape(self):
+        samples = [self.ds[i] for i in range(4)]
+        batch = collate_toy_2d(samples)
+        assert batch["image"].shape == (4, 3, 64, 64)
+
+    def test_batch_state_action_shape(self):
+        samples = [self.ds[i] for i in range(4)]
+        batch = collate_toy_2d(samples)
+        assert batch["state"].shape == (4, 2)
+        assert batch["action"].shape == (4, 2)
+
+    def test_batch_input_ids_is_2d(self):
+        samples = [self.ds[i] for i in range(4)]
+        batch = collate_toy_2d(samples)
+        assert batch["input_ids"].dim() == 2
+        assert batch["input_ids"].shape[0] == 4
+
+    def test_collate_returns_torch_tensors(self):
+        samples = [self.ds[i] for i in range(4)]
+        batch = collate_toy_2d(samples)
+        import torch
+        for key in ["image", "input_ids", "state", "action"]:
+            assert isinstance(batch[key], torch.Tensor), f"{key} is not Tensor"
