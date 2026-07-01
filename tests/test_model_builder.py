@@ -34,7 +34,7 @@ class TestModelBuilderConfig:
                 },
                 "state_encoder": {"input_dim": 2, "output_dim": 128},
                 "fusion": {"type": "concat_mlp", "input_dim": 384, "output_dim": 128},
-                "action_head": {"input_dim": 128, "action_dim": 2},
+                "action_head": {"input_dim": 128},
             }
         }
         model = build_model(config)
@@ -124,6 +124,67 @@ class TestFreezeTextEncoder:
         model = build_model(config)
         trainable = any(p.requires_grad for p in model.text_encoder.parameters())
         assert trainable
+
+
+class TestModelNameValidation:
+    """Builder must reject unsupported model names."""
+
+    def test_unsupported_model_name_raises(self):
+        config = {"model": {"name": "vla_300b", "vision_encoder": {"type": "small_cnn"},
+                            "text_encoder": {"type": "mock_llm", "output_dim": 128},
+                            "state_encoder": {"output_dim": 128},
+                            "fusion": {"type": "concat_mlp"},
+                            "action_head": {"input_dim": 128}}}
+        with pytest.raises(ValueError, match="model.name"):
+            build_model(config)
+
+    def test_default_name_is_accepted(self):
+        config = {"vision_encoder": {"type": "small_cnn"},
+                  "text_encoder": {"type": "mock_llm", "output_dim": 128},
+                  "state_encoder": {"output_dim": 128},
+                  "fusion": {"type": "concat_mlp"},
+                  "action_head": {"input_dim": 128}}
+        model = build_model(config)
+        assert model is not None
+
+    def test_mini_vla_name_is_accepted(self):
+        config = {"model": {"name": "mini_vla", "vision_encoder": {"type": "small_cnn"},
+                            "text_encoder": {"type": "mock_llm", "output_dim": 128},
+                            "state_encoder": {"output_dim": 128},
+                            "fusion": {"type": "concat_mlp"},
+                            "action_head": {"input_dim": 128}}}
+        model = build_model(config)
+        assert model is not None
+
+
+class TestDimensionConsistency:
+    """Builder must enforce dimension consistency."""
+
+    def test_fusion_input_mismatch_raises(self):
+        config = {"model": {"vision_encoder": {"type": "small_cnn", "output_dim": 64},
+                            "text_encoder": {"type": "mock_llm", "output_dim": 64},
+                            "state_encoder": {"output_dim": 64},
+                            "fusion": {"type": "concat_mlp", "input_dim": 999},
+                            "action_head": {"input_dim": 128}}}
+        with pytest.raises(ValueError, match="fusion.input_dim"):
+            build_model(config)
+
+    def test_action_head_input_mismatch_raises(self):
+        config = {"model": {"vision_encoder": {"type": "small_cnn", "output_dim": 64},
+                            "text_encoder": {"type": "mock_llm", "output_dim": 64},
+                            "state_encoder": {"output_dim": 64},
+                            "fusion": {"type": "concat_mlp", "input_dim": 192, "output_dim": 64},
+                            "action_head": {"input_dim": 128}}}
+        with pytest.raises(ValueError, match="action_head.input_dim"):
+            build_model(config)
+
+
+class TestBuildModelImport:
+    """build_model is importable from mini_vla.models."""
+
+    def test_import_from_models(self):
+        from mini_vla.models import build_model as bm
+        assert callable(bm)
 
 
 class TestCustomActionDim:

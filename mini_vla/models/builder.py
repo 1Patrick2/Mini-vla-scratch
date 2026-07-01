@@ -1,13 +1,12 @@
 """MiniVLA model builder — construct a model from a configuration dict.
 
 Usage:
-    from mini_vla.models.builder import build_model
+    from mini_vla.models import build_model
     model = build_model(config_dict)
     action_pred = model(batch)
 
-Strict type checking is performed on ``vision_encoder.type``,
-``text_encoder.type``, and ``fusion.type``.  Unsupported types raise
-``ValueError``.
+Strict type and dimension checking is performed.  Invalid config values
+raise ``ValueError`` with a clear message.
 """
 
 from __future__ import annotations
@@ -34,9 +33,18 @@ def build_model(config: Dict[str, Any]) -> MiniVLA:
         A fully assembled ``MiniVLA`` model.
 
     Raises:
-        ValueError: If an unsupported component type is specified.
+        ValueError: If an unsupported component type or dimension mismatch
+            is detected.
     """
     cfg = config.get("model", config)
+
+    # ── Model name validation ────────────────────────────────────
+    model_name = cfg.get("name", "mini_vla")
+    if model_name != "mini_vla":
+        raise ValueError(
+            f"Unsupported model.name: '{model_name}'. Expected 'mini_vla'."
+        )
+
     action_dim = cfg.get("action_dim", 2)
 
     # ── Vision encoder ──────────────────────────────────────────
@@ -46,18 +54,19 @@ def build_model(config: Dict[str, Any]) -> MiniVLA:
             f"Unsupported vision_encoder.type: '{ve_cfg.get('type')}'. "
             f"Expected 'small_cnn'."
         )
-    vision_encoder = SmallCNNVisionEncoder(
-        output_dim=ve_cfg.get("output_dim", 128),
-    )
+    ve_output = ve_cfg.get("output_dim", 128)
+    vision_encoder = SmallCNNVisionEncoder(output_dim=ve_output)
 
     # ── Text encoder ────────────────────────────────────────────
     te_cfg = cfg.get("text_encoder", {})
     te_type = te_cfg.get("type", "mock_llm")
+    te_output = te_cfg.get("output_dim", 128)
+
     if te_type == "mock_llm":
         text_encoder = MockLLMTextEncoder(
             vocab_size=te_cfg.get("vocab_size", 128),
             hidden_dim=te_cfg.get("hidden_dim", 128),
-            output_dim=te_cfg.get("output_dim", 128),
+            output_dim=te_output,
         )
     elif te_type == "hf_llm":
         raise ValueError(
@@ -66,40 +75,60 @@ def build_model(config: Dict[str, Any]) -> MiniVLA:
         )
     else:
         raise ValueError(
-            f"Unsupported text_encoder.type: '{te_type}'. "
-            f"Expected 'mock_llm'."
+            f"Unsupported text_encoder.type: '{te_type}'. Expected 'mock_llm'."
         )
 
-    # Freeze text encoder if configured
     if te_cfg.get("freeze", False):
         for param in text_encoder.parameters():
             param.requires_grad = False
 
     # ── State encoder ───────────────────────────────────────────
     se_cfg = cfg.get("state_encoder", {})
+    se_output = se_cfg.get("output_dim", 128)
     state_encoder = StateEncoder(
         input_dim=se_cfg.get("input_dim", 2),
         hidden_dim=se_cfg.get("hidden_dim", 64),
-        output_dim=se_cfg.get("output_dim", 128),
+        output_dim=se_output,
     )
 
-    # ── Fusion ──────────────────────────────────────────────────
+    # ── Dimensionality cross-check ──────────────────────────────
+    expected_fusion_input = ve_output + te_output + se_output
     fu_cfg = cfg.get("fusion", {})
+    fu_input = fu_cfg.get("input_dim", 384)
+
+    if fu_input != expected_fusion_input:
+        raise ValueError(
+            f"fusion.input_dim ({fu_input}) does not match "
+            f"vision_encoder.output_dim ({ve_output}) + "
+            f"text_encoder.output_dim ({te_output}) + "
+            f"state_encoder.output_dim ({se_output}) = {expected_fusion_input}."
+        )
+
+    # ── Fusion ──────────────────────────────────────────────────
     if fu_cfg.get("type", "concat_mlp") != "concat_mlp":
         raise ValueError(
             f"Unsupported fusion.type: '{fu_cfg.get('type')}'. "
             f"Expected 'concat_mlp'."
         )
+    fu_output = fu_cfg.get("output_dim", 128)
     fusion = FusionMLP(
-        input_dim=fu_cfg.get("input_dim", 384),
+        input_dim=fu_input,
         hidden_dim=fu_cfg.get("hidden_dim", 256),
-        output_dim=fu_cfg.get("output_dim", 128),
+        output_dim=fu_output,
     )
 
     # ── Action head ─────────────────────────────────────────────
     ah_cfg = cfg.get("action_head", {})
+    ah_input = ah_cfg.get("input_dim", 128)
+
+    if ah_input != fu_output:
+        raise ValueError(
+            f"action_head.input_dim ({ah_input}) does not match "
+            f"fusion.output_dim ({fu_output})."
+        )
+
     action_head = ActionHead(
-        input_dim=ah_cfg.get("input_dim", 128),
+        input_dim=ah_input,
         hidden_dim=ah_cfg.get("hidden_dim", 128),
         action_dim=action_dim,
     )

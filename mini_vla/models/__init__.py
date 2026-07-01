@@ -1,6 +1,7 @@
 """Model modules."""
 
 from mini_vla.models.action_head import ActionHead
+from mini_vla.models.builder import build_model
 from mini_vla.models.fusion import FusionMLP
 from mini_vla.models.language_encoder import (
     BaseTextEncoder,
@@ -20,4 +21,5 @@ __all__ = [
     "FusionMLP",
     "ActionHead",
     "MiniVLA",
+    "build_model",
 ]
