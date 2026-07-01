@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.0 — Stage 2 MiniVLA Forward and Builder
+
+### Added
+- MiniVLA end-to-end forward (assembles all components into a single model)
+- Config-driven `build_model()` with strict validation:
+  - `model.name` check
+  - Component type checks (vision_encoder, text_encoder, fusion)
+  - Dimension consistency checks (fusion.input_dim, action_head.input_dim)
+  - `text_encoder.freeze` support
+- DataLoader-to-model smoke test
+- `build_model` exported from `mini_vla.models`
+
+### Changed
+- Stage 2 docs and roadmap aligned with LLM-ready TextBackbone
+- `action_dim` controlled by `model.action_dim` (not action_head.output_dim)
+
 ## 0.4.0 — Stage 2 Model Components
 
 ### Added

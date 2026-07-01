@@ -10,9 +10,11 @@ image + instruction + state -> action
 
 ## Current Stage
 
-**V0: Toy 2D Mini VLA — Stage 2 model components implemented; preparing Stage 2-D end-to-end MiniVLA forward.**
+**V0: Toy 2D Mini VLA — Stage 2 model forward completed; preparing Stage 3 behavior cloning training loop.**
 
-All model components are implemented: vision encoder, LLM-ready text backbone, state encoder, fusion MLP, and action head. The full MiniVLA forward pass is the next step.
+The full model pipeline is complete: Toy 2D data pipeline, SmallCNN vision encoder, LLM-ready text backbone,
+attention_mask support, StateEncoder, FusionMLP, ActionHead, MiniVLA end-to-end forward, and config-driven
+model builder with strict validation. Next is the behavior cloning training loop.
 
 ## Implemented
 
@@ -27,12 +29,14 @@ All model components are implemented: vision encoder, LLM-ready text backbone, s
 - SmallCNNVisionEncoder
 - LLM-ready TextBackbone (`MockLLMTextEncoder` for tests, `LLMTextEncoder` for HuggingFace)
 - StateEncoder, FusionMLP, ActionHead
+- MiniVLA end-to-end forward
+- Config-driven model builder with strict type/dimension validation
+- DataLoader-to-model smoke test
 - Action clipping utility
-- Component and dataset tests (39 passing)
+- Component, dataset, and model-forward tests (52 passing)
 
 ## Planned
 
-- MiniVLA end-to-end forward with LLM-ready TextBackbone
 - Behavior cloning training loop
 - Checkpoint saving and evaluation
 - Single-sample inference and visualization

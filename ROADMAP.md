@@ -50,8 +50,9 @@
 | Stage 2-A: SmallCNNVisionEncoder | ✅ Complete |
 | Stage 2-B: LLM-ready TextBackbone + attention_mask | ✅ Complete |
 | Stage 2-C: StateEncoder + FusionMLP + ActionHead | ✅ Complete |
-| Stage 2-D: MiniVLA end-to-end forward | ⏳ |
-| Stage 2-E: Docs, configs, changelog cleanup | ⏳ |
+| Stage 2-D: MiniVLA end-to-end forward | ✅ Complete |
+| Stage 2-E: Config-driven builder + DataLoader smoke | ✅ Complete |
+| Stage 2-F: Docs, configs, changelog cleanup | ✅ Complete |
 
 **Architecture:**
 ```
@@ -69,6 +70,28 @@ fused_feat → ActionHead → action_pred    Tensor[B, 2]
 - Action is continuous MLP regression (no tokenization, no diffusion, no flow matching).
 
 **Acceptance:** All component forward shape tests pass + MiniVLA can consume DataLoader batch.
+
+## Stage 3: Behavior Cloning Training Loop
+
+**Goal:** Run end-to-end training: dataset → model → loss → backward → checkpoint.
+
+**Key design decisions:**
+- Text backbone is **frozen** by default (``freeze: true``).
+- Trainable: vision_encoder, state_encoder, fusion, action_head.
+- Loss: MSE(action_pred, action_gt).
+
+**Main files:**
+- `mini_vla/training/losses.py`
+- `mini_vla/training/trainer.py`
+- `mini_vla/training/checkpoint.py`
+- `tests/test_training_step.py`
+
+**Command:**
+```bash
+python scripts/train.py --config configs/train/debug.yaml
+```
+
+**Acceptance:** Training loss decreases over epochs, checkpoint saved to `outputs/checkpoints/best.pt`.
 
 ---
 

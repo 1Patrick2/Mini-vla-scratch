@@ -87,5 +87,32 @@ Linear(128, 128) → ReLU → Linear(128, action_dim) → [B, action_dim]
 
 ## References
 
+### Config-Driven Builder
+
+The model can be constructed from a YAML config via ``build_model(config)``:
+
+```python
+from mini_vla.models import build_model
+import yaml
+
+with open("configs/model/mini_vla_cnn_llm.yaml") as f:
+    model = build_model(yaml.safe_load(f))
+```
+
+The builder performs strict validation:
+
+- ``model.name == "mini_vla"`` (required)
+- ``vision_encoder.type == "small_cnn"`` (required)
+- ``text_encoder.type == "mock_llm"`` (required, ``"hf_llm"`` reserved)
+- ``fusion.type == "concat_mlp"`` (required)
+- ``fusion.input_dim == sum(encoder output dims)`` (dimension consistency)
+- ``action_head.input_dim == fusion.output_dim`` (dimension consistency)
+- ``text_encoder.freeze: true`` disables gradient for text backbone parameters
+- ``model.action_dim`` controls the action head output dimension
+
+Any violation raises a clear ``ValueError``.
+
+## References
+
 - TinyVLA: compact VLA, fast inference, data efficiency. ([arXiv 2409.12514](https://arxiv.org/abs/2409.12514))
 - SmolVLA: affordable VLA, LLM/VLM-ready text backbone. ([arXiv 2506.01844](https://arxiv.org/abs/2506.01844))
