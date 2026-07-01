@@ -105,16 +105,10 @@ batch = {
 
 ## Data Splits
 
-Toy data generation should produce separate splits:
+Stage 1 does **not** require train/val subdirectories.
+All episodes are stored directly under ``data/toy_2d/episodes/ep_*/``.
 
-```
-data/toy_2d/
-└── episodes/
-    ├── train/       # ~80% of episodes
-    └── val/         # ~20% of episodes
-```
-
-This split can be handled either at generation time or in the dataset loader.
+Train/val split will be introduced in Stage 3 (training loop) or via a Dataset split utility.
 
 ## Optional Global Manifest
 
@@ -123,7 +117,7 @@ If present, it indexes all episodes:
 
 ```json
 [
-  {"episode_id": "ep_000000", "path": "episodes/train/ep_000000/episode.json"},
-  {"episode_id": "ep_000001", "path": "episodes/val/ep_000001/episode.json"}
+  {"episode_id": "ep_000000", "path": "episodes/ep_000000/episode.json"},
+  {"episode_id": "ep_000001", "path": "episodes/ep_000001/episode.json"}
 ]
 ```
