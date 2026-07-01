@@ -100,6 +100,13 @@ class Toy2DDataset(Dataset):
         if self.transform is not None:
             img_tensor = self.transform(img_tensor)
 
+        # Ensure image is a torch float32 tensor
+        if isinstance(img_tensor, np.ndarray):
+            img_tensor = torch.from_numpy(img_tensor)
+        elif not isinstance(img_tensor, torch.Tensor):
+            img_tensor = torch.tensor(img_tensor, dtype=torch.float32)
+        img_tensor = img_tensor.float()  # ensure float32
+
         # Tokenize instruction
         input_ids = tokenize(meta["instruction"], max_len=self.max_text_len)
         attention_mask = build_attention_mask(input_ids)
@@ -109,7 +116,7 @@ class Toy2DDataset(Dataset):
         action = torch.tensor(step["action"], dtype=torch.float32)
 
         return {
-            "image": torch.from_numpy(img_tensor),  # [C, H, W], float32
+            "image": img_tensor,  # [C, H, W], float32
             "input_ids": torch.tensor(input_ids, dtype=torch.long),
             "attention_mask": torch.tensor(attention_mask, dtype=torch.long),
             "state": state,

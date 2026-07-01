@@ -28,4 +28,3 @@ model:
   action_head:
     input_dim: 128
     hidden_dim: 128
-    output_dim: 2

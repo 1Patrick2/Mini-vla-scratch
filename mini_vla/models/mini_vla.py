@@ -10,7 +10,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Dict
 
 import torch
 from torch import nn
@@ -21,7 +21,8 @@ class MiniVLA(nn.Module):
 
     Args:
         vision_encoder: Module that maps ``image`` Tensor[B,3,H,W] → Tensor[B, D].
-        text_encoder: Module that maps ``input_ids`` Tensor[B,T] + ``attention_mask`` → Tensor[B, D].
+        text_encoder: Module that maps ``input_ids`` Tensor[B,T] + ``attention_mask``
+            to Tensor[B, D].
         state_encoder: Module that maps ``state`` Tensor[B, state_dim] → Tensor[B, D].
         fusion: Module that concatenates image/text/state features → Tensor[B, D].
         action_head: Module that maps fused features → Tensor[B, action_dim].
