@@ -52,4 +52,17 @@ __all__ = [
     "ID_TO_TOKEN",
     "tokenize",
     "decode",
+    "build_attention_mask",
 ]
+
+def build_attention_mask(input_ids: List[int], pad_token_id: int = 0) -> List[int]:
+    """Build attention mask from token IDs: 1 for non-pad tokens, 0 for pad.
+
+    Args:
+        input_ids: Token ID sequence (padded or truncated).
+        pad_token_id: The ID used for padding (default 0).
+
+    Returns:
+        attention_mask: List[int] of same length as input_ids.
+    """
+    return [1 if tok != pad_token_id else 0 for tok in input_ids]

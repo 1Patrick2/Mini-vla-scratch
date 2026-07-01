@@ -53,9 +53,15 @@ class TestToy2DDataset:
         sample = ds[0]
         assert "image" in sample
         assert "input_ids" in sample
+        assert "attention_mask" in sample
         assert "state" in sample
         assert "action" in sample
         assert "instruction" in sample
+
+    def test_attention_mask_shape_matches_input_ids(self):
+        ds = Toy2DDataset(self.data_root)
+        sample = ds[0]
+        assert sample["attention_mask"].shape == sample["input_ids"].shape
 
     def test_image_shape(self):
         ds = Toy2DDataset(self.data_root)
@@ -98,6 +104,12 @@ class TestCollateToy2D:
         samples = [self.ds[i] for i in range(4)]
         batch = collate_toy_2d(samples)
         assert isinstance(batch, dict)
+        assert "attention_mask" in batch
+
+    def test_batch_attention_mask_shape(self):
+        samples = [self.ds[i] for i in range(4)]
+        batch = collate_toy_2d(samples)
+        assert batch["attention_mask"].shape == batch["input_ids"].shape
 
     def test_batch_image_shape(self):
         samples = [self.ds[i] for i in range(4)]
@@ -120,5 +132,5 @@ class TestCollateToy2D:
         samples = [self.ds[i] for i in range(4)]
         batch = collate_toy_2d(samples)
         import torch
-        for key in ["image", "input_ids", "state", "action"]:
+        for key in ["image", "input_ids", "attention_mask", "state", "action"]:
             assert isinstance(batch[key], torch.Tensor), f"{key} is not Tensor"

@@ -19,7 +19,7 @@ import torch
 from PIL import Image
 from torch.utils.data import Dataset
 
-from mini_vla.datasets.transforms import tokenize
+from mini_vla.datasets.transforms import build_attention_mask, tokenize
 
 
 def _find_episode_dirs(root: str | Path) -> List[Path]:
@@ -102,6 +102,7 @@ class Toy2DDataset(Dataset):
 
         # Tokenize instruction
         input_ids = tokenize(meta["instruction"], max_len=self.max_text_len)
+        attention_mask = build_attention_mask(input_ids)
 
         # State & action — return torch tensors
         state = torch.tensor(step["state"], dtype=torch.float32)
@@ -110,6 +111,7 @@ class Toy2DDataset(Dataset):
         return {
             "image": torch.from_numpy(img_tensor),  # [C, H, W], float32
             "input_ids": torch.tensor(input_ids, dtype=torch.long),
+            "attention_mask": torch.tensor(attention_mask, dtype=torch.long),
             "state": state,
             "action": action,
             "instruction": meta["instruction"],
