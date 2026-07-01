@@ -1,11 +1,10 @@
 """Tests for StateEncoder, FusionMLP, and ActionHead."""
 
-import pytest
 import torch
 
-from mini_vla.models.state_encoder import StateEncoder
-from mini_vla.models.fusion import FusionMLP
 from mini_vla.models.action_head import ActionHead
+from mini_vla.models.fusion import FusionMLP
+from mini_vla.models.state_encoder import StateEncoder
 
 
 class TestStateEncoder:

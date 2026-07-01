@@ -1,0 +1,31 @@
+model:
+  name: mini_vla
+  action_dim: 2
+
+  vision_encoder:
+    type: small_cnn
+    output_dim: 128
+
+  text_encoder:
+    type: mock_llm
+    vocab_size: 128
+    hidden_dim: 128
+    output_dim: 128
+    freeze: true
+    hf_model_name: null
+
+  state_encoder:
+    input_dim: 2
+    hidden_dim: 64
+    output_dim: 128
+
+  fusion:
+    type: concat_mlp
+    input_dim: 384
+    hidden_dim: 256
+    output_dim: 128
+
+  action_head:
+    input_dim: 128
+    hidden_dim: 128
+    output_dim: 2

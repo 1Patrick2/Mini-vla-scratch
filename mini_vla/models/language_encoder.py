@@ -98,7 +98,7 @@ class LLMTextEncoder(BaseTextEncoder):
             raise ImportError(
                 "transformers is required for LLMTextEncoder, "
                 "but not required for MockLLMTextEncoder."
-            )
+            ) from None
 
         self.backbone = AutoModel.from_pretrained(model_name)
         hidden_dim = self.backbone.config.hidden_size

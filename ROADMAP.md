@@ -47,9 +47,9 @@
 | Component | Status |
 |-----------|--------|
 | Stage 2-0: TinyVLA / SmolVLA research notes | ✅ Complete |
-| Stage 2-A: SmallCNNVisionEncoder | ⏳ |
-| Stage 2-B: LLM-ready TextBackbone (MockLLM + attention_mask) | ⏳ |
-| Stage 2-C: StateEncoder + FusionMLP + ActionHead | ⏳ |
+| Stage 2-A: SmallCNNVisionEncoder | ✅ Complete |
+| Stage 2-B: LLM-ready TextBackbone + attention_mask | ✅ Complete |
+| Stage 2-C: StateEncoder + FusionMLP + ActionHead | ✅ Complete |
 | Stage 2-D: MiniVLA end-to-end forward | ⏳ |
 | Stage 2-E: Docs, configs, changelog cleanup | ⏳ |
 

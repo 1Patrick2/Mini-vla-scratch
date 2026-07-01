@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 — Stage 2 Model Components
+
+### Added
+- Lightweight VLA research notes (`docs/07_lightweight_vla_research.md`)
+- SmallCNNVisionEncoder — `[B,3,64,64]` → `[B,128]`
+- LLM-ready TextBackbone (`BaseTextEncoder`, `MockLLMTextEncoder`, `LLMTextEncoder`)
+- `attention_mask` support in Toy2DDataset and collate_toy_2d
+- `build_attention_mask()` helper in transforms
+- StateEncoder, FusionMLP, ActionHead
+- Component tests (test_vision_encoder, test_text_encoder, test_model_components)
+
 ## 0.3.0 — Stage 1-C DataLoader Collation
 
 ### Added
@@ -35,12 +46,7 @@
 - Training CLI with dry-run mode
 - Action clipping utility
 - Basic unit tests (4 passing)
-- All Stage 0 root files:
-  - `pyproject.toml` with black/ruff/pytest/mypy config
-  - `requirements.txt` and `requirements-dev.txt`
-  - `environment.yml` for Conda
-  - `setup_env.sh` (Linux/WSL) and `setup_env.ps1` (Windows)
-  - `.env.example` and `.gitignore`
+- All Stage 0 root files
 - 6 design documents in `docs/` (00–05)
 - Comprehensive long-term plan (`PLAN.md`)
 

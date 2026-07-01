@@ -10,10 +10,9 @@ image + instruction + state -> action
 
 ## Current Stage
 
-**V0: Toy 2D Mini VLA — Stage 1 data pipeline completed; preparing Stage 2 model forward.**
+**V0: Toy 2D Mini VLA — Stage 2 model components implemented; preparing Stage 2-D end-to-end MiniVLA forward.**
 
-The data pipeline is complete: synthetic episode generation, per-episode dataset loading,
-minimal tokenizer, and DataLoader collation.
+All model components are implemented: vision encoder, LLM-ready text backbone, state encoder, fusion MLP, and action head. The full MiniVLA forward pass is the next step.
 
 ## Implemented
 
@@ -22,13 +21,18 @@ minimal tokenizer, and DataLoader collation.
 - Toy 2D episode data generation (`episode.json` + RGB frames)
 - Toy2DDataset with per-episode loading
 - Minimal instruction tokenizer
+- `attention_mask` support in Dataset and collation
 - DataLoader collation (`collate_toy_2d`)
+- Lightweight VLA research notes (TinyVLA, SmolVLA)
+- SmallCNNVisionEncoder
+- LLM-ready TextBackbone (`MockLLMTextEncoder` for tests, `LLMTextEncoder` for HuggingFace)
+- StateEncoder, FusionMLP, ActionHead
 - Action clipping utility
-- Basic tests (20 passing)
+- Component and dataset tests (39 passing)
 
 ## Planned
 
-- MiniVLA model forward (CNN + GRU + MLP fusion)
+- MiniVLA end-to-end forward with LLM-ready TextBackbone
 - Behavior cloning training loop
 - Checkpoint saving and evaluation
 - Single-sample inference and visualization

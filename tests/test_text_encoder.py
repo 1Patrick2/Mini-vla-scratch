@@ -1,9 +1,9 @@
 """Tests for LLM-ready text encoder."""
 
-import torch
 import pytest
+import torch
 
-from mini_vla.models.language_encoder import MockLLMTextEncoder, LLMTextEncoder
+from mini_vla.models.language_encoder import MockLLMTextEncoder
 
 
 class TestMockLLMTextEncoder:
@@ -49,9 +49,15 @@ class TestMockLLMTextEncoder:
 
 
 class TestLLMTextEncoder:
-    """LLMTextEncoder — requires transformers."""
+    """LLMTextEncoder — class existence only, no real AutoModel download."""
 
-    def test_raises_import_error_without_transformers(self):
-        with pytest.raises((ImportError, RuntimeError, Exception)):
-            # May raise ImportError or model download error
-            LLMTextEncoder(model_name="nonexistent-model")
+    def test_llm_text_encoder_class_is_importable(self):
+        from mini_vla.models.language_encoder import LLMTextEncoder
+        assert LLMTextEncoder is not None
+
+    def test_llm_text_encoder_is_subclass(self):
+        from mini_vla.models.language_encoder import (
+            BaseTextEncoder,
+            LLMTextEncoder,
+        )
+        assert issubclass(LLMTextEncoder, BaseTextEncoder)
