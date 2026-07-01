@@ -42,28 +42,33 @@
 
 ## Stage 2: MiniVLA Model Forward
 
-**Goal:** Implement `image + instruction + state → action` forward pass.
+**Goal:** Implement `image + instruction + state → action_pred` forward pass with LLM-ready text backbone.
+
+| Component | Status |
+|-----------|--------|
+| Stage 2-0: TinyVLA / SmolVLA research notes | ✅ Complete |
+| Stage 2-A: SmallCNNVisionEncoder | ⏳ |
+| Stage 2-B: LLM-ready TextBackbone (MockLLM + attention_mask) | ⏳ |
+| Stage 2-C: StateEncoder + FusionMLP + ActionHead | ⏳ |
+| Stage 2-D: MiniVLA end-to-end forward | ⏳ |
+| Stage 2-E: Docs, configs, changelog cleanup | ⏳ |
 
 **Architecture:**
 ```
-image → CNN vision_encoder → image_feat
-text → Embedding + GRU language_encoder → text_feat
-state → MLP state_encoder → state_feat
-concat → Fusion MLP → ActionHead MLP → action_pred
+image → SmallCNNVisionEncoder → image_feat    Tensor[B, 128]
+input_ids + attention_mask → LLM-ready TextBackbone → text_feat    Tensor[B, 128]
+state → StateEncoder → state_feat    Tensor[B, 128]
+concat(image_feat, text_feat, state_feat) → FusionMLP → fused_feat
+fused_feat → ActionHead → action_pred    Tensor[B, 2]
 ```
 
-**Main files:**
-- `mini_vla/models/vision_encoder.py`
-- `mini_vla/models/language_encoder.py`
-- `mini_vla/models/state_encoder.py`
-- `mini_vla/models/fusion.py`
-- `mini_vla/models/action_head.py`
-- `mini_vla/models/mini_vla.py`
-- `tests/test_model_forward.py`
+**Key design decisions:**
+- Text backbone is LLM-ready (`BaseTextEncoder` → `MockLLMTextEncoder` / `LLMTextEncoder`).
+- MockLLMTextEncoder does NOT require transformers or real LLM downloads.
+- Dataset returns `attention_mask` alongside `input_ids`.
+- Action is continuous MLP regression (no tokenization, no diffusion, no flow matching).
 
-**Command:** `pytest tests/test_model_forward.py -v`
-
-**Acceptance:** Model forward outputs `(batch, action_dim)` tensor.
+**Acceptance:** All component forward shape tests pass + MiniVLA can consume DataLoader batch.
 
 ---
 
