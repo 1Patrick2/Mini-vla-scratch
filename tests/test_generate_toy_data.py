@@ -1,9 +1,6 @@
 """Tests for Toy 2D data generation."""
 
 import json
-from pathlib import Path
-
-import pytest
 
 from scripts.generate_toy_data import generate_toy_data
 
@@ -55,12 +52,12 @@ class TestGenerateToyData:
                 assert png.stat().st_size > 100  # not empty
 
     def test_episodes_are_deterministic(self, tmp_path):
-        root1 = generate_toy_data(tmp_path / "a", num_episodes=1, max_steps=3, image_size=64, seed=42)
-        root2 = generate_toy_data(tmp_path / "b", num_episodes=1, max_steps=3, image_size=64, seed=42)
+        a = generate_toy_data(tmp_path / "a", num_episodes=1, max_steps=3, image_size=64, seed=42)
+        b = generate_toy_data(tmp_path / "b", num_episodes=1, max_steps=3, image_size=64, seed=42)
 
-        with open(root1 / "episodes" / "ep_000000" / "episode.json") as f:
+        with open(a / "episodes" / "ep_000000" / "episode.json") as f:
             ep1 = json.load(f)
-        with open(root2 / "episodes" / "ep_000000" / "episode.json") as f:
+        with open(b / "episodes" / "ep_000000" / "episode.json") as f:
             ep2 = json.load(f)
 
         assert ep1["steps"] == ep2["steps"]

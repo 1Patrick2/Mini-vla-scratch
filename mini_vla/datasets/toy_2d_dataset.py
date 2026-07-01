@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
+import torch
 from PIL import Image
 from torch.utils.data import Dataset
 
@@ -102,13 +103,13 @@ class Toy2DDataset(Dataset):
         # Tokenize instruction
         input_ids = tokenize(meta["instruction"], max_len=self.max_text_len)
 
-        # State & action
-        state = np.array(step["state"], dtype=np.float32)
-        action = np.array(step["action"], dtype=np.float32)
+        # State & action — return torch tensors
+        state = torch.tensor(step["state"], dtype=torch.float32)
+        action = torch.tensor(step["action"], dtype=torch.float32)
 
         return {
-            "image": img_tensor,
-            "input_ids": np.array(input_ids, dtype=np.int64),
+            "image": torch.from_numpy(img_tensor),  # [C, H, W], float32
+            "input_ids": torch.tensor(input_ids, dtype=torch.long),
             "state": state,
             "action": action,
             "instruction": meta["instruction"],

@@ -10,25 +10,25 @@ image + instruction + state -> action
 
 ## Current Stage
 
-**V0: Toy 2D manipulation behavior cloning — Stage 0 skeleton.**
+**V0: Toy 2D Mini VLA — Stage 1 data pipeline completed; preparing Stage 2 model forward.**
 
-The project skeleton is in place: package structure, config system, training CLI dry-run, basic tests.
-Dataset generation, model implementation, training loop, inference, and rollout are planned for subsequent stages.
+The data pipeline is complete: synthetic episode generation, per-episode dataset loading,
+minimal tokenizer, and DataLoader collation.
 
 ## Implemented
 
 - Project skeleton and package structure
-- Config loading and base config merge
-- Minimal config schema validation
-- Training CLI dry-run
+- Config loading and schema validation
+- Toy 2D episode data generation (`episode.json` + RGB frames)
+- Toy2DDataset with per-episode loading
+- Minimal instruction tokenizer
+- DataLoader collation (`collate_toy_2d`)
 - Action clipping utility
-- Basic unit tests (4 passing)
+- Basic tests (20 passing)
 
 ## Planned
 
-- Toy 2D episode dataset generation
-- Dataset loader and collation
-- CNN / GRU / MLP MiniVLA model
+- MiniVLA model forward (CNN + GRU + MLP fusion)
 - Behavior cloning training loop
 - Checkpoint saving and evaluation
 - Single-sample inference and visualization
@@ -50,6 +50,7 @@ pip install -e .
 python -c "import mini_vla; print('OK')"
 pytest
 python scripts/train.py --config configs/train/debug.yaml --dry-run
+python scripts/generate_toy_data.py --config configs/data/toy_2d.yaml --num-episodes 5
 ```
 
 ## Roadmap

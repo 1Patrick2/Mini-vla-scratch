@@ -14,7 +14,7 @@ image + instruction + state → action
 | 阶段 | 内容 | 状态 |
 |------|------|------|
 | Stage 0 | 项目骨架 + 基准文件 | ✅ 完成 |
-| Stage 1 | Toy 2D 数据生成 | ⏳ 待开始 |
+| Stage 1 | Toy 2D 数据管道 (generator → dataset → collate) | ✅ 完成 |
 | Stage 2 | MiniVLA 模型 forward | ⏳ |
 | Stage 3 | Behavior Cloning 训练闭环 | ⏳ |
 | Stage 4 | 推理 + 可视化 | ⏳ |
@@ -58,7 +58,7 @@ mini_vla/config/schema.py
 mini_vla/datasets/__init__.py  (placeholder)
 mini_vla/datasets/collate.py
 mini_vla/datasets/episode_dataset.py  (placeholder)
-mini_vla/datasets/toy_2d_dataset.py  (placeholder)
+mini_vla/datasets/toy_2d_dataset.py
 mini_vla/datasets/transforms.py
 mini_vla/models/__init__.py  (placeholder)
 mini_vla/models/action_head.py  (placeholder)
@@ -109,7 +109,15 @@ python scripts/train.py --config configs/train/debug.yaml --dry-run
 
 ---
 
-## Stage 1：Toy 2D 数据生成 ⏳
+## Stage 1：Toy 2D 数据生成 ✅
+
+**目标已完成。** 拆为 3 个子阶段：
+
+- Stage 1-A ✅ Toy 2D Data Generator (`scripts/generate_toy_data.py`)
+- Stage 1-B ✅ Toy2DDataset (`mini_vla/datasets/toy_2d_dataset.py`)
+- Stage 1-C ✅ DataLoader Collation (`mini_vla/datasets/collate.py`)
+
+### 输出格式
 
 ### 目标
 

@@ -1,7 +1,7 @@
 """Tests for Toy 2D dataset and transforms."""
 
-import numpy as np
 import pytest
+import torch
 
 from mini_vla.datasets import Toy2DDataset, tokenize
 from mini_vla.datasets.collate import collate_toy_2d
@@ -71,7 +71,7 @@ class TestToy2DDataset:
     def test_input_ids_dtype(self):
         ds = Toy2DDataset(self.data_root)
         sample = ds[0]
-        assert sample["input_ids"].dtype == np.int64
+        assert sample["input_ids"].dtype == torch.long
 
     def test_instruction_string_preserved(self):
         ds = Toy2DDataset(self.data_root)

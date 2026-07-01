@@ -20,54 +20,23 @@
 
 ---
 
-## Stage 1: Toy 2D Data Generation and Dataset
+## Stage 1: Toy 2D Data Pipeline
 
-**Goal:** Generate synthetic 2D manipulation episodes and implement the dataset loader.
+**Goal:** Generate synthetic 2D manipulation episodes, implement dataset loader and collation.
 
-**Main files:**
-- `scripts/generate_toy_data.py`
-- `mini_vla/datasets/toy_2d_dataset.py`
-- `mini_vla/datasets/collate.py`
-- `mini_vla/datasets/transforms.py`
-- `tests/test_dataset.py`
+| Component | Status |
+|-----------|--------|
+| Toy data generator | ✅ Complete |
+| Per-episode `episode.json` output | ✅ Complete |
+| RGB frame rendering (red object, green target) | ✅ Complete |
+| `Toy2DDataset` loader | ✅ Complete |
+| Minimal instruction tokenizer | ✅ Complete |
+| `collate_toy_2d` DataLoader collation | ✅ Complete |
+| Dataset and collation tests | ✅ Complete |
 
-**Data format (per-episode):**
-```
-data/toy_2d/
-└── episodes/
-    ├── ep_000000/
-    │   ├── frames/
-    │   │   ├── 000000.png
-    │   │   └── ...
-    │   └── episode.json
-    └── ep_000001/
-        ├── frames/
-        └── episode.json
-```
-
-Each `episode.json` contains per-step samples:
-```json
-{
-  "episode_id": "ep_000000",
-  "instruction": "move red object to target",
-  "steps": [
-    {
-      "frame": "frames/000000.png",
-      "state": [0.25, 0.40],
-      "action": [0.03, -0.01],
-      "target": [0.80, 0.20]
-    }
-  ]
-}
-```
-
-**Command:**
-```bash
-python scripts/generate_toy_data.py --config configs/data/toy_2d.yaml --num-episodes 100
-python -c "from mini_vla.datasets.toy_2d_dataset import Toy2DDataset; ds = Toy2DDataset('data/toy_2d'); print(ds[0].keys())"
-```
-
-**Acceptance:** `pytest tests/test_dataset.py` — dataset returns image/input_ids/state/action tensors with correct shapes.
+**Command:** `python scripts/generate_toy_data.py --config configs/data/toy_2d.yaml --num-episodes 5`
+**Command:** `pytest tests/test_dataset.py`
+**Tests:** 20 passed
 
 ---
 

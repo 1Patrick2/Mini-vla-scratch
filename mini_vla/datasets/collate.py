@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-import numpy as np
 import torch
 
 
@@ -22,22 +21,22 @@ def collate_toy_2d(batch: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
         Batched dict with keys ``image``, ``input_ids``, ``state``, ``action``.
         All values are ``torch.Tensor``.
     """
-    images = np.stack([s["image"] for s in batch])          # [B, 3, H, W]
-    states = np.stack([s["state"] for s in batch])          # [B, 2]
-    actions = np.stack([s["action"] for s in batch])        # [B, 2]
+    images = torch.stack([s["image"] for s in batch])          # [B, 3, H, W]
+    states = torch.stack([s["state"] for s in batch])          # [B, 2]
+    actions = torch.stack([s["action"] for s in batch])        # [B, 2]
 
     # Pad input_ids to the maximum length in this batch
     ids_list = [s["input_ids"] for s in batch]
     max_len = max(len(ids) for ids in ids_list)
-    padded = np.zeros((len(batch), max_len), dtype=np.int64)
+    padded = torch.zeros((len(batch), max_len), dtype=torch.long)
     for i, ids in enumerate(ids_list):
         padded[i, : len(ids)] = ids
 
     return {
-        "image": torch.from_numpy(images),
-        "input_ids": torch.from_numpy(padded),
-        "state": torch.from_numpy(states),
-        "action": torch.from_numpy(actions),
+        "image": images,
+        "input_ids": padded,
+        "state": states,
+        "action": actions,
     }
 
 
