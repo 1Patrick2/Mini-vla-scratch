@@ -1,0 +1,19 @@
+base: ../base.yaml
+
+data:
+  dataset_type: pusht
+  repo_id: lerobot/pusht
+  image_key: observation.image
+  state_key: observation.state
+  action_key: action
+  instruction: push the T block to the target
+  image_size: 64
+  max_text_len: 16
+  batch_size: 4
+  num_workers: 0
+  max_samples: 256
+
+train:
+  epochs: 1
+  lr: 0.001
+  device: cpu

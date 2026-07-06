@@ -126,23 +126,38 @@ python scripts/infer_one.py --ckpt outputs/checkpoints/best.pt --config configs/
 
 ---
 
-## Stage 5: Fake Robot Rollout
+## Stage 5: PushT Dataset Evaluation ⏳
 
-**Goal:** Continuous action prediction loop with fake robot state update and success evaluation.
+**Goal:** Use the `lerobot/pusht` dataset to verify MiniVLA action prediction
+on a real robot-learning benchmark, with offline evaluation and baselines.
 
-**Main files:**
-- `mini_vla/inference/rollout.py`
-- `mini_vla/robot_interface/fake_robot.py`
-- `scripts/rollout_fake_robot.py`
+**Key files:**
+- `docs/12_pusht_dataset_evaluation_design.md` — design doc
+- `configs/data/pusht.yaml` — PushT data config
+- `configs/train/pusht_debug.yaml` — PushT training config
+- `mini_vla/datasets/pusht_adapter.py` — PushT → MiniVLA sample adapter
+- `mini_vla/datasets/pusht_inspection.py` — dataset schema inspection
+- `mini_vla/datasets/factory.py` — dataset factory
+- `mini_vla/evaluation/action_metrics.py` — MAE, MSE, RMSE, cosine similarity
+- `mini_vla/evaluation/baselines.py` — zero/mean/previous-action baselines
+- `mini_vla/evaluation/evaluator.py` — offline evaluation
+- `scripts/inspect_pusht_dataset.py` — inspect PushT schema
+- `scripts/evaluate_pusht.py` — run evaluation and produce report
 
 **Command:**
 ```bash
-python scripts/rollout_fake_robot.py --ckpt outputs/checkpoints/best.pt --num-episodes 50
+python scripts/inspect_pusht_dataset.py --repo-id lerobot/pusht --max-samples 128
+python scripts/train.py --config configs/train/pusht_debug.yaml
+python scripts/evaluate_pusht.py --config configs/train/pusht_debug.yaml --ckpt outputs/checkpoints/best.pt
 ```
 
-**Acceptance:** Reports success rate, average steps, and average final distance to target.
-
----
+**Acceptance:**
+- inspect prints pushT schema
+- adapt PushT sample to MiniVLA format (image [3,64,64], state [2], action [2])
+- train/evaluate on PushT subset
+- held-out episode evaluation
+- MiniVLA beats zero-action and mean-action baselines
+- report.json saved with metrics and baseline comparisons
 
 ## Stage 6: Open Kaka Adapter Skeleton
 
