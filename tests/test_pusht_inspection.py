@@ -44,6 +44,16 @@ class TestDiscoverFeatureKeys:
         keys = discover_feature_keys(sample)
         assert keys["image_key"] in sample
 
+    def test_required_only_passes(self):
+        """Sample with only required keys (no metadata) should pass."""
+        sample = {
+            "observation.image": np.zeros((96, 96, 3), dtype=np.uint8),
+            "observation.state": np.zeros(2, dtype=np.float32),
+            "action": np.zeros(2, dtype=np.float32),
+        }
+        keys = discover_feature_keys(sample)
+        assert keys["image_key"] == "observation.image"
+
 
 class TestSummarizePushtSchema:
     def test_empty_samples(self):
@@ -60,6 +70,34 @@ class TestSummarizePushtSchema:
         assert schema["has_reward"] is True
         assert schema["has_episode_index"] is True
         assert schema["has_timestamp"] is True
+
+    def test_nested_sample_schema(self):
+        """Nested observation dict should still produce correct schema."""
+        rng = np.random.RandomState(1)
+        sample = {
+            "observation": {
+                "image": rng.randint(0, 256, (96, 96, 3), dtype=np.uint8),
+                "state": rng.randn(2).astype(np.float32),
+            },
+            "action": rng.randn(2).astype(np.float32),
+        }
+        schema = summarize_pusht_schema([sample])
+        assert schema["image_shape"] == [96, 96, 3]
+        assert schema["state_shape"] == [2]
+        assert schema["action_shape"] == [2]
+
+    def test_optional_metadata_missing(self):
+        """When optional metadata is absent, has_* fields should be False."""
+        sample = {
+            "observation.image": np.zeros((96, 96, 3), dtype=np.uint8),
+            "observation.state": np.zeros(2, dtype=np.float32),
+            "action": np.zeros(2, dtype=np.float32),
+        }
+        schema = summarize_pusht_schema([sample])
+        assert schema["has_reward"] is False
+        assert schema["has_done"] is False
+        assert schema["has_success"] is False
+        assert schema["has_episode_index"] is False
 
 
 class TestComputeStateActionStats:
@@ -82,6 +120,15 @@ class TestComputeStateActionStats:
         stats = compute_state_action_stats(samples)
         assert "min" in stats["action"]
         assert len(stats["action"]["mean"]) == 2
+
+    def test_single_sample_std_not_nan(self):
+        """Single-sample std should be [0.0, 0.0], not NaN."""
+        sample = _make_mock_sample()
+        stats = compute_state_action_stats([sample])
+        for std_val in stats["state"]["std"]:
+            assert std_val == 0.0, f"State std {std_val} should be 0.0 (not NaN)"
+        for std_val in stats["action"]["std"]:
+            assert std_val == 0.0, f"Action std {std_val} should be 0.0 (not NaN)"
 
 
 class TestBuildPushtReport:

@@ -381,7 +381,6 @@ python scripts/evaluate_pusht.py \\
 - MiniVLA test MAE < MeanActionBaseline MAE
 - finite output ratio == 1.0
 - report.json / predictions.jsonl 保存成功
-Average final distance to target: 0.023
 ```
 
 ---
