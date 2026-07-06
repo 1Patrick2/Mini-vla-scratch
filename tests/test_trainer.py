@@ -11,5 +11,5 @@ class TrainerTest(unittest.TestCase):
 
         self.assertEqual(
             trainer.describe(),
-            "Trainer(model=mini_vla_cnn_gru, data=toy_2d, epochs=1)",
+            "Trainer(model=mini_vla, data=toy_2d, epochs=1)",
         )
