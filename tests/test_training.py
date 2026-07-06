@@ -70,6 +70,45 @@ def _build_data_loader(data_root, cfg=None):
     )
 
 
+def _evaluate_loss(model, loader):
+    """Compute average MSE loss over the full loader.
+
+    Args:
+        model: MiniVLA model.
+        loader: DataLoader yielding batches with ``action`` key.
+
+    Returns:
+        Scalar float — average MSE loss across all batches.
+    """
+    model.eval()
+    total_loss = 0.0
+    num_batches = 0
+    with torch.no_grad():
+        for batch in loader:
+            pred = model(batch)
+            total_loss += mse_action_loss(pred, batch["action"]).item()
+            num_batches += 1
+    return total_loss / max(num_batches, 1)
+
+
+def _zero_action_baseline_loss(loader):
+    """Compute average MSE loss when predicting all-zero actions.
+
+    Args:
+        loader: DataLoader yielding batches with ``action`` key.
+
+    Returns:
+        Scalar float — average MSE loss of zero prediction.
+    """
+    total_loss = 0.0
+    num_batches = 0
+    for batch in loader:
+        zero_pred = torch.zeros_like(batch["action"])
+        total_loss += mse_action_loss(zero_pred, batch["action"]).item()
+        num_batches += 1
+    return total_loss / max(num_batches, 1)
+
+
 # ── Loss ──────────────────────────────────────────────────────────────────────
 
 class TestMseActionLoss:
@@ -392,30 +431,38 @@ class TestEndToEndTrainingStep:
 class TestTrainingCorrectness:
     """Training correctness: model should learn better than baselines."""
 
-    def test_trained_model_better_than_initial(self, tmp_path):
-        """After training, model loss should be meaningfully lower than initial."""
+    def test_trained_model_beats_zero_action_baseline(self, tmp_path):
+        """Trained model should outperform both its initial state and zero-action baseline."""
         data_root = _generate_toy_data(tmp_path, num_episodes=4, max_steps=8)
         model = build_model(_MODEL_CFG)
         loader = _build_data_loader(data_root)
-        batch = next(iter(loader))
 
-        initial_loss = float(mse_action_loss(model(batch), batch["action"]).item())
+        # Compute baselines on full loader
+        zero_loss = _zero_action_baseline_loss(loader)
+        initial_loss = _evaluate_loss(model, loader)
 
+        # Train for enough epochs to converge
         opt = create_optimizer(model, _MODEL_CFG)
         num_epochs = 50
-        best_loss = float("inf")
         for _ in range(num_epochs):
-            for b in loader:
-                pred = model(b)
-                loss = mse_action_loss(pred, b["action"])
+            for batch in loader:
+                pred = model(batch)
+                loss = mse_action_loss(pred, batch["action"])
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
-                best_loss = min(best_loss, float(loss.item()))
 
-        assert best_loss < initial_loss, (
-            f"Best trained loss {best_loss:.6f} should be lower than "
-            f"initial loss {initial_loss:.6f}"
+        # Evaluate on full loader after training
+        final_loss = _evaluate_loss(model, loader)
+
+        assert final_loss < initial_loss, (
+            f"Final loss {final_loss:.6f} should be lower than "
+            f"initial loss {initial_loss:.6f} "
+            f"(zero baseline: {zero_loss:.6f})"
+        )
+        assert final_loss < zero_loss, (
+            f"Final loss {final_loss:.6f} should be lower than "
+            f"zero-action baseline {zero_loss:.6f}"
         )
 
     def test_tiny_dataset_overfit(self, tmp_path):
@@ -423,21 +470,20 @@ class TestTrainingCorrectness:
         data_root = _generate_toy_data(tmp_path, num_episodes=4, max_steps=8)
         model = build_model(_MODEL_CFG)
         loader = _build_data_loader(data_root)
-        batch = next(iter(loader))
 
-        initial_loss = float(mse_action_loss(model(batch), batch["action"]).item())
+        initial_loss = _evaluate_loss(model, loader)
 
         opt = create_optimizer(model, _MODEL_CFG)
         num_epochs = 20
-        final_loss = float("inf")
         for _ in range(num_epochs):
-            for b in loader:
-                pred = model(b)
-                loss = mse_action_loss(pred, b["action"])
+            for batch in loader:
+                pred = model(batch)
+                loss = mse_action_loss(pred, batch["action"])
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
-                final_loss = float(loss.item())
+
+        final_loss = _evaluate_loss(model, loader)
 
         assert final_loss < initial_loss, (
             f"Final loss {final_loss:.6f} should be lower than "

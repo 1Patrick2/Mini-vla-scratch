@@ -12,6 +12,7 @@
 - Checkpoint save/load (save_checkpoint, load_checkpoint) with last.pt / best.pt tracking
 - Checkpoint unit tests (save, load, epoch/metrics restoration, optimizer state)
 - Training CLI (scripts/train.py) with dry-run mode, data validation, and checkpoint output paths
+- Training correctness tests: zero-action baseline comparison, tiny dataset overfit, evaluate_loss() helper, checkpoint reload consistency
 
 ### Changed
 - ROADMAP.md: deduplicated Stage 3 section
@@ -20,7 +21,7 @@
 
 ### Fixed
 - Config schema now requires model.name and action_dim only; state_dim is optional
-- Test config dimension mismatch in test_training_step.py (fusion.output_dim defaulted to 128 instead of 16)
+- Test config dimension mismatch in test_training.py (fusion.output_dim defaulted to 128 instead of 16)
 
 ## 0.5.0 — Stage 2 MiniVLA Forward and Builder
 
