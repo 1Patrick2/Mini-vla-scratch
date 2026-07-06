@@ -108,7 +108,8 @@ batch = {
 Stage 1 does **not** require train/val subdirectories.
 All episodes are stored directly under ``data/toy_2d/episodes/ep_*/``.
 
-Train/val split will be introduced in Stage 3 (training loop) or via a Dataset split utility.
+The current training loop uses all episodes for training without a separate validation split.
+A train/val split can be added in a future stage if needed.
 
 ## Optional Global Manifest
 

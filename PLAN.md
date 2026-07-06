@@ -45,8 +45,7 @@ setup_env.ps1
 .env.example
 .gitignore
 configs/base.yaml
-configs/model/mini_vla_cnn_gru.yaml
-configs/model/mini_vla_resnet_gru.yaml
+configs/model/mini_vla_cnn_llm.yaml
 configs/data/toy_2d.yaml
 configs/data/episode_robot.yaml
 configs/train/debug.yaml
@@ -268,7 +267,7 @@ output = model(batch)  # shape: (4, 2)
 | `mini_vla/training/optimizer.py` | Adam / scheduler 配置 |
 | `mini_vla/training/checkpoint.py` | save / load / best model tracking |
 | `mini_vla/training/trainer.py` | 完整 train / val loop |
-| `tests/test_training_step.py` | 新增：单步 forward/backward 测试 |
+| `tests/test_training.py` | 新增：完整训练管线测试 |
 
 ### 训练流程
 

@@ -2,7 +2,7 @@
 
 ## Why This Document
 
-Stage 2/3 need external references for model forward and training design.
+Stage 2/3 used these references for model forward and training design.
 Open-kaka-robot is useful for robot control and safety, but not for model architecture.
 TinyVLA and SmolVLA are the primary references for lightweight VLA design.
 This project keeps a minimal implementation, not a full reproduction.

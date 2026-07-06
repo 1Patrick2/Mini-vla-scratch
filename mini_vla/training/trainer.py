@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import torch
-from torch import nn
 from torch.utils.data import DataLoader
 
 from mini_vla.datasets import Toy2DDataset
@@ -18,7 +17,7 @@ from mini_vla.datasets.collate import collate_toy_2d
 from mini_vla.models import build_model
 from mini_vla.training.checkpoint import save_checkpoint
 from mini_vla.training.losses import mse_action_loss
-from mini_vla.training.metrics import mse, l1
+from mini_vla.training.metrics import l1
 from mini_vla.training.optimizer import create_optimizer
 
 

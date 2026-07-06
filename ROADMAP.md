@@ -73,9 +73,11 @@ fused_feat → ActionHead → action_pred    Tensor[B, 2]
 
 ---
 
-## Stage 3: Behavior Cloning Training Loop
+## Stage 3: Behavior Cloning Training Loop ✅ Complete
 
 **Goal:** Run end-to-end training: dataset → model → loss → backward → checkpoint.
+
+**Status:** MSE loss, optimizer with frozen-parameter filtering, Trainer with fit()/train_one_epoch(), checkpoint save/load (last.pt + best.pt), and training CLI all implemented.
 
 **Key design decisions:**
 - Text backbone is **frozen** by default (``freeze: true``).
@@ -88,15 +90,14 @@ fused_feat → ActionHead → action_pred    Tensor[B, 2]
 - `mini_vla/training/optimizer.py`
 - `mini_vla/training/checkpoint.py`
 - `mini_vla/training/trainer.py`
-- `tests/test_training_step.py`
-- `tests/test_checkpoint.py`
+- `tests/test_training.py`
 
 **Command:**
 ```bash
 python scripts/train.py --config configs/train/debug.yaml
 ```
 
-**Acceptance:** Training loss decreases over epochs, checkpoint saved to `outputs/checkpoints/best.pt`.
+**Acceptance:** Training loop runs end-to-end, finite loss/mae are reported, trainable parameters update, frozen text encoder stays unchanged, and last.pt/best.pt are saved.
 
 ---
 

@@ -38,29 +38,31 @@ Freezing is controlled via `text_encoder.freeze: true` in config. When enabled, 
 
 ## Config Organization
 
-Training pipeline uses two config files:
+The training pipeline uses a single merged config via the `base:` inheritance mechanism:
 
 | Config | Path | Purpose |
 |--------|------|---------|
-| Model config | `configs/model/mini_vla_cnn_llm.yaml` | MiniVLA architecture (vision/text/state/fusion/action) |
-| Training config | `configs/train/debug.yaml` | Data, optimizer, device, output paths |
+| Base config | `configs/base.yaml` | Contains full MiniVLA model config + shared paths |
+| Training config | `configs/train/debug.yaml` | Data, optimizer, device overrides |
+| Model reference | `configs/model/mini_vla_cnn_llm.yaml` | Standalone model reference / builder test config |
 
-The training config inherits from `base.yaml` via the `base:` field and adds its own `data.train` and `model_config` keys.
+The training config inherits from `base.yaml` via the `base:` field:
 
 ```
 # configs/train/debug.yaml
 base: ../base.yaml
-model_config: configs/model/mini_vla_cnn_llm.yaml  # optional reference
 
 data:
   batch_size: 4
+  num_workers: 0
 
 train:
   epochs: 1
   lr: 0.001
   device: cpu
-  num_workers: 0
 ```
+
+The trainer receives the merged config and calls `build_model(config)` directly — no separate `model_config` loading mechanism is used.
 
 ## Checkpoint Strategy
 
@@ -73,7 +75,7 @@ train:
       "model_state_dict": model.state_dict(),
       "optimizer_state_dict": optimizer.state_dict(),
       "epoch": epoch,
-      "metrics": {"train_loss": ..., "train_mae": ...},
+      "metrics": {"loss": ..., "mae": ...},
       "config": config,
   }
   ```
@@ -110,7 +112,7 @@ for epoch in range(epochs):
         optimizer.zero_grad()
 
         epoch_loss += loss.item()
-        epoch_mae += action_mae(action_pred, batch["action"])
+        epoch_mae += l1(action_pred, batch["action"])
 
     avg_loss = epoch_loss / len(train_loader)
     avg_mae = epoch_mae / len(train_loader)
@@ -126,7 +128,7 @@ for epoch in range(epochs):
 pytest --tb=short
 
 # Single training step end-to-end
-pytest tests/test_training_step.py -v -k "end_to_end"
+pytest tests/test_training.py -v -k "end_to_end"
 
 # Full training run
 python scripts/train.py --config configs/train/debug.yaml
