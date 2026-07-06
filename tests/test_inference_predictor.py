@@ -147,3 +147,80 @@ class TestPredictorOutput:
         assert torch.allclose(pred, manual_pred, atol=1e-6), (
             f"Predictor output {pred} differs from manual forward {manual_pred}"
         )
+
+
+class TestInferenceQuality:
+    """Inference quality: trained Predictor should outperform zero-action baseline."""
+
+    def _train_full_model(self, tmp_path):
+        """Train a config-compatible MiniVLA for enough epochs and return (predictor, dataset)."""
+        from mini_vla.datasets import Toy2DDataset
+        from scripts.generate_toy_data import generate_toy_data
+
+        data_root = generate_toy_data(
+            output_root=tmp_path / "data",
+            num_episodes=4, max_steps=8, image_size=64, seed=42,
+        )
+        # Use 128-dim config compatible with configs/base.yaml
+        cfg = {
+            "model": {
+                "action_dim": 2,
+                "vision_encoder": {"type": "small_cnn", "output_dim": 128},
+                "text_encoder": {"type": "mock_llm", "output_dim": 128, "freeze": True},
+                "state_encoder": {"input_dim": 2, "output_dim": 128},
+                "fusion": {"type": "concat_mlp", "input_dim": 384, "output_dim": 128},
+                "action_head": {"input_dim": 128},
+            },
+            "train": {"lr": 0.01},
+        }
+        from torch.utils.data import DataLoader
+
+        from mini_vla.datasets.collate import collate_toy_2d
+        from mini_vla.models import build_model
+        from mini_vla.training.checkpoint import save_checkpoint
+        from mini_vla.training.losses import mse_action_loss
+        from mini_vla.training.optimizer import create_optimizer
+
+        model = build_model(cfg)
+        loader = DataLoader(
+            Toy2DDataset(data_root), batch_size=4, collate_fn=collate_toy_2d,
+        )
+        opt = create_optimizer(model, cfg)
+        for _ in range(30):
+            for batch in loader:
+                loss = mse_action_loss(model(batch), batch["action"])
+                opt.zero_grad()
+                loss.backward()
+                opt.step()
+
+        ckpt_path = save_checkpoint(
+            tmp_path / "model.pt", model,
+            epoch=30, metrics={"loss": float(loss.item())},
+        )
+        predictor = Predictor(cfg, ckpt_path, clip_action=False)
+        ds = Toy2DDataset(data_root)
+        return predictor, ds
+
+    def test_trained_predictor_beats_zero_baseline(self, tmp_path):
+        """Raw Predictor output should have lower L1 than zero-action baseline."""
+        predictor, ds = self._train_full_model(tmp_path)
+
+        num_samples = min(len(ds), 12)
+        pred_l1_sum = 0.0
+        zero_l1_sum = 0.0
+
+        for i in range(num_samples):
+            sample = ds[i]
+            pred_action = predictor.predict(sample)
+            gt_action = sample["action"]
+
+            pred_l1_sum += float(torch.abs(pred_action - gt_action).mean())
+            zero_l1_sum += float(torch.abs(torch.zeros_like(gt_action) - gt_action).mean())
+
+        pred_l1 = pred_l1_sum / num_samples
+        zero_l1 = zero_l1_sum / num_samples
+
+        assert pred_l1 < zero_l1, (
+            f"Predictor L1 ({pred_l1:.6f}) should be lower than "
+            f"zero-action L1 ({zero_l1:.6f})"
+        )
