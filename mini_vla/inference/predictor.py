@@ -31,14 +31,14 @@ class Predictor:
         config: Dict[str, Any],
         checkpoint_path: str | Path,
         device: str = "cpu",
-        clip_action_flag: bool = True,
+        clip_action: bool = True,
         action_limit: float = 0.05,
     ) -> None:
         self.device = torch.device(device)
         self.model = build_model(config).to(self.device)
         load_checkpoint(checkpoint_path, self.model, device=self.device)
         self.model.eval()
-        self.clip_action_flag = clip_action_flag
+        self.clip_action = clip_action
         self.action_limit = action_limit
 
     def predict(self, sample: Dict[str, torch.Tensor]) -> torch.Tensor:
@@ -72,7 +72,10 @@ class Predictor:
 
         action = action_pred.squeeze(0).cpu()  # Tensor[action_dim]
 
-        if self.clip_action_flag:
+        if self.clip_action:
+            # Use tensor-level clamp here rather than
+            # robot_interface.action_adapter.clip_action() (list-based),
+            # to avoid unnecessary tensor↔list conversions on the inference path.
             action = torch.clamp(action, -self.action_limit, self.action_limit)
 
         return action

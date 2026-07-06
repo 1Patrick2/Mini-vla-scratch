@@ -27,5 +27,6 @@ outputs/*
 !outputs/logs/.gitkeep
 !outputs/predictions/
 !outputs/predictions/.gitkeep
+outputs/predictions/*
 !outputs/visualizations/
 !outputs/visualizations/.gitkeep

@@ -107,7 +107,7 @@ class TestPredictorOutput:
         cfg, ckpt_path, _ = _train_and_save_checkpoint(tmp_path)
         predictor = Predictor(
             cfg, ckpt_path,
-            clip_action_flag=True, action_limit=1e-6,
+            clip_action=True, action_limit=1e-6,
         )
         action = predictor.predict(self.sample)
         assert action.shape == (2,)
@@ -115,12 +115,35 @@ class TestPredictorOutput:
             f"Clipped action {action} exceeds limit 1e-6"
         )
 
-    def test_no_clip_returns_raw_action(self, tmp_path):
-        """With clip_action_flag=False, action can exceed the default limit."""
+    def test_predictor_matches_manual_loaded_model(self, tmp_path):
+        """Predictor raw output (clip_action=False) matches manual forward."""
+
+        from mini_vla.datasets import Toy2DDataset
+        from mini_vla.models import build_model
+        from mini_vla.training.checkpoint import load_checkpoint
+
+        # Fresh training run with dedicated data
+        data_root = _train_and_save_checkpoint(tmp_path / "train")[2]
         cfg, ckpt_path, _ = _train_and_save_checkpoint(tmp_path)
-        predictor = Predictor(
-            cfg, ckpt_path,
-            clip_action_flag=False, action_limit=0.05,
+
+        # Predictor with no clipping
+        predictor = Predictor(cfg, ckpt_path, clip_action=False)
+        sample = Toy2DDataset(data_root)[0]
+        pred = predictor.predict(sample)
+
+        # Manual forward
+        model = build_model(cfg)
+        load_checkpoint(ckpt_path, model)
+        model.eval()
+        batch = {
+            "image": sample["image"].unsqueeze(0),
+            "input_ids": sample["input_ids"].unsqueeze(0),
+            "attention_mask": sample["attention_mask"].unsqueeze(0),
+            "state": sample["state"].unsqueeze(0),
+        }
+        with torch.no_grad():
+            manual_pred = model(batch).squeeze(0).cpu()
+
+        assert torch.allclose(pred, manual_pred, atol=1e-6), (
+            f"Predictor output {pred} differs from manual forward {manual_pred}"
         )
-        action = predictor.predict(self.sample)
-        assert action.shape == (2,)
