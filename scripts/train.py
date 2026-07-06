@@ -42,27 +42,35 @@ def main() -> None:
     dataset_type = config["data"]["dataset_type"]
     epochs = config["train"]["epochs"]
     device = config["train"]["device"]
-    data_root = config["data"]["data_root"]
 
     print(f"Config: {args.config}")
     print(f"Model:  {model_name}")
-    print(f"Data:   {dataset_type}  @ {data_root}")
+    print(f"Data:   {dataset_type}")
+    if dataset_type == "pusht":
+        repo_id = config["data"].get("repo_id", "lerobot/pusht")
+        max_samples = config["data"].get("max_samples", "all")
+        print(f"  Repo:  {repo_id}")
+        print(f"  Max:   {max_samples} samples")
+    else:
+        data_root = config["data"]["data_root"]
+        print(f"  Root:  {data_root}")
     print(f"Train:  {epochs} epochs, device={device}")
 
     if args.dry_run:
         print("Dry-run mode.  No training executed.")
         return
 
-    # Check that data exists
-    data_path = Path(data_root)
-    if not (data_path / "episodes").is_dir():
-        print(
-            f"Error: no data found at {data_root}.\n"
-            f"Generate data first:\n"
-            f"  python scripts/generate_toy_data.py "
-            f"--config configs/data/toy_2d.yaml --num-episodes 5"
-        )
-        sys.exit(1)
+    # Validate data exists (Toy2D only)
+    if dataset_type != "pusht":
+        data_path = Path(config["data"]["data_root"])
+        if not (data_path / "episodes").is_dir():
+            print(
+                f"Error: no data found at {config['data']['data_root']}.\n"
+                f"Generate data first:\n"
+                f"  python scripts/generate_toy_data.py "
+                f"--config configs/data/toy_2d.yaml --num-episodes 5"
+            )
+            sys.exit(1)
 
     trainer = Trainer(config)
     print(f"\nStarting training for {epochs} epoch(s) ...")

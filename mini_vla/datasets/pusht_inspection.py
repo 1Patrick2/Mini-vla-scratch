@@ -13,6 +13,18 @@ import torch
 
 # ── Feature key discovery ──────────────────────────────────────────────
 
+REQUIRED_PUSHT_KEYS = ["observation.image", "observation.state", "action"]
+
+OPTIONAL_PUSHT_KEYS = [
+    "episode_index",
+    "frame_index",
+    "timestamp",
+    "next.reward",
+    "next.done",
+    "next.success",
+    "task_index",
+]
+
 DEFAULT_PUSHT_KEYS = {
     "image_key": "observation.image",
     "state_key": "observation.state",
@@ -27,18 +39,31 @@ DEFAULT_PUSHT_KEYS = {
 }
 
 
+def _has_key(sample: Dict[str, Any], key: str) -> bool:
+    """Check if a key exists in a sample (supports flat and nested)."""
+    if key in sample:
+        return True
+    parts = key.split(".", 1)
+    if len(parts) == 2 and parts[0] in sample:
+        child = sample[parts[0]]
+        if isinstance(child, dict) and parts[1] in child:
+            return True
+    return False
+
+
 def discover_feature_keys(
     sample: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, str]:
     """Return the standard PushT key mapping.
 
-    If a sample is provided, the function verifies that the expected keys
-    exist; otherwise it returns the default mapping.
+    If a sample is provided, only the **required** keys
+    (``observation.image``, ``observation.state``, ``action``) must exist;
+    all other keys are optional.
     """
     if sample is not None:
-        missing = [k for k in DEFAULT_PUSHT_KEYS.values() if k not in sample]
+        missing = [k for k in REQUIRED_PUSHT_KEYS if not _has_key(sample, k)]
         if missing:
-            raise KeyError(f"Missing expected PushT keys: {missing}")
+            raise KeyError(f"Missing required PushT keys: {missing}")
     return dict(DEFAULT_PUSHT_KEYS)
 
 
@@ -62,34 +87,46 @@ def summarize_pusht_schema(samples: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
         "feature_keys": list(s.keys()),
     }
 
-    img = s.get(DEFAULT_PUSHT_KEYS["image_key"])
+    img = _get_any(s, DEFAULT_PUSHT_KEYS["image_key"])
     if img is not None:
         t = torch.as_tensor(img)
         schema["image_shape"] = list(t.shape)
         schema["image_dtype"] = str(t.dtype)
 
-    state = s.get(DEFAULT_PUSHT_KEYS["state_key"])
+    state = _get_any(s, DEFAULT_PUSHT_KEYS["state_key"])
     if state is not None:
         t = torch.as_tensor(state)
         schema["state_shape"] = list(t.shape)
 
-    action = s.get(DEFAULT_PUSHT_KEYS["action_key"])
+    action = _get_any(s, DEFAULT_PUSHT_KEYS["action_key"])
     if action is not None:
         t = torch.as_tensor(action)
         schema["action_shape"] = list(t.shape)
 
     noteys = [
-        ("has_reward", "reward_key", DEFAULT_PUSHT_KEYS["reward_key"]),
-        ("has_done", "done_key", DEFAULT_PUSHT_KEYS["done_key"]),
-        ("has_success", "success_key", DEFAULT_PUSHT_KEYS["success_key"]),
-        ("has_episode_index", "episode_index_key", DEFAULT_PUSHT_KEYS["episode_index_key"]),
-        ("has_frame_index", "frame_index_key", DEFAULT_PUSHT_KEYS["frame_index_key"]),
-        ("has_timestamp", "timestamp_key", DEFAULT_PUSHT_KEYS["timestamp_key"]),
+        ("has_reward", OPTIONAL_PUSHT_KEYS[3]),
+        ("has_done", OPTIONAL_PUSHT_KEYS[4]),
+        ("has_success", OPTIONAL_PUSHT_KEYS[5]),
+        ("has_episode_index", OPTIONAL_PUSHT_KEYS[0]),
+        ("has_frame_index", OPTIONAL_PUSHT_KEYS[1]),
+        ("has_timestamp", OPTIONAL_PUSHT_KEYS[2]),
     ]
-    for key_name, _, raw_key in noteys:
-        schema[key_name] = raw_key in s
+    for key_name, raw_key in noteys:
+        schema[key_name] = _has_key(s, raw_key)
 
     return schema
+
+
+def _get_any(sample: Dict[str, Any], key: str) -> Any:
+    """Get a value by key, supporting flat and nested access."""
+    if key in sample:
+        return sample[key]
+    parts = key.split(".", 1)
+    if len(parts) == 2 and parts[0] in sample:
+        child = sample[parts[0]]
+        if isinstance(child, dict) and parts[1] in child:
+            return child[parts[1]]
+    return None
 
 
 def compute_state_action_stats(
@@ -113,8 +150,14 @@ def compute_state_action_stats(
     state_key = DEFAULT_PUSHT_KEYS["state_key"]
     action_key = DEFAULT_PUSHT_KEYS["action_key"]
 
-    state_list = [torch.as_tensor(s[state_key]) for s in pool if state_key in s]
-    action_list = [torch.as_tensor(s[action_key]) for s in pool if action_key in s]
+    state_list = [
+        torch.as_tensor(_get_any(s, state_key))
+        for s in pool if _get_any(s, state_key) is not None
+    ]
+    action_list = [
+        torch.as_tensor(_get_any(s, action_key))
+        for s in pool if _get_any(s, action_key) is not None
+    ]
 
     def _stats(tensors):
         stacked = torch.stack(tensors)
@@ -122,7 +165,7 @@ def compute_state_action_stats(
             "min": stacked.min(dim=0).values.tolist(),
             "max": stacked.max(dim=0).values.tolist(),
             "mean": stacked.mean(dim=0).tolist(),
-            "std": stacked.std(dim=0).tolist(),
+            "std": stacked.std(dim=0, correction=0).tolist(),
         }
 
     result: Dict[str, Any] = {}

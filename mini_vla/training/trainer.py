@@ -12,8 +12,8 @@ from typing import Any, Dict, Optional
 import torch
 from torch.utils.data import DataLoader
 
-from mini_vla.datasets import Toy2DDataset
 from mini_vla.datasets.collate import collate_toy_2d
+from mini_vla.datasets.factory import build_dataset
 from mini_vla.models import build_model
 from mini_vla.training.checkpoint import save_checkpoint
 from mini_vla.training.losses import mse_action_loss
@@ -50,7 +50,7 @@ class Trainer:
 
     def _build_dataloader(self) -> DataLoader:
         data_cfg = self.config["data"]
-        ds = Toy2DDataset(root=data_cfg["data_root"])
+        ds = build_dataset(data_cfg)
         return DataLoader(
             ds,
             batch_size=data_cfg["batch_size"],

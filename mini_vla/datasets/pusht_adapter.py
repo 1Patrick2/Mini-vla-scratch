@@ -17,6 +17,102 @@ from mini_vla.datasets.pusht_inspection import DEFAULT_PUSHT_KEYS
 from mini_vla.datasets.transforms import build_attention_mask, tokenize
 
 
+def _get_by_key(sample: Dict[str, Any], key: str) -> Any:
+    """Get a value from a sample dict supporting both flat and nested keys.
+
+    ``sample["observation.image"]`` (flat) is tried first;
+    ``sample["observation"]["image"]`` (nested) is tried second.
+
+    Raises:
+        KeyError: If neither form exists.
+    """
+    if key in sample:
+        return sample[key]
+    parts = key.split(".", 1)
+    if len(parts) == 2 and parts[0] in sample:
+        child = sample[parts[0]]
+        if isinstance(child, dict) and parts[1] in child:
+            return child[parts[1]]
+    raise KeyError(
+        f"Key '{key}' not found in sample (tried flat and nested). "
+        f"Available keys: {list(sample.keys())}"
+    )
+
+
+def _maybe_get_by_key(sample: Dict[str, Any], key: str) -> Any:
+    """Like ``_get_by_key`` but returns ``None`` when the key is missing."""
+    try:
+        return _get_by_key(sample, key)
+    except KeyError:
+        return None
+
+
+def _process_image(img_data: Any, image_size: int = 64) -> torch.Tensor:
+    """Convert a PushT image to a CHW float32 tensor in [0, 1].
+
+    Supports:
+    - HWC numpy uint8  [H,W,3]  in [0, 255]
+    - HWC numpy float  [H,W,3]  in [0, 1]
+    - CHW torch.uint8  [3,H,W]  in [0, 255]
+    - CHW torch.float  [3,H,W]  in [0, 1]
+    - PIL Image
+
+    Returns:
+        Tensor[3, image_size, image_size], float32, range [0, 1].
+    """
+    # ── PIL ──────────────────────────────────────────────────────────
+    if isinstance(img_data, Image.Image):
+        pil = img_data
+
+    # ── torch.Tensor ──────────────────────────────────────────────────
+    elif isinstance(img_data, torch.Tensor):
+        ndim = img_data.ndim
+        if ndim == 3 and img_data.shape[0] in (1, 3):
+            # CHW — already the target layout
+            img = img_data.float()
+            if img.max() > 1.0:
+                img = img / 255.0
+            img = img.clamp(0, 1)
+            if img.shape[1] != image_size or img.shape[2] != image_size:
+                # Resize via PIL
+                pil = Image.fromarray((img.permute(1, 2, 0) * 255).byte().numpy())
+                pil = pil.resize((image_size, image_size), Image.BILINEAR)
+                arr = np.array(pil, dtype=np.float32) / 255.0
+                return torch.from_numpy(arr).permute(2, 0, 1).clamp(0, 1)
+            return img
+        # HWC tensor
+        pil = Image.fromarray(img_data.byte().numpy())
+
+    # ── numpy ─────────────────────────────────────────────────────────
+    elif isinstance(img_data, np.ndarray):
+        ndim = img_data.ndim
+        if ndim == 3 and img_data.shape[-1] in (1, 3):
+            # HWC
+            arr = img_data.astype(np.float32)
+            if arr.max() > 1.0:
+                arr = arr / 255.0
+            arr = arr.clip(0, 1)
+            pil = Image.fromarray((arr * 255).astype(np.uint8))
+        elif ndim == 3 and img_data.shape[0] in (1, 3):
+            # CHW
+            arr = img_data.transpose(1, 2, 0).astype(np.float32)
+            if arr.max() > 1.0:
+                arr = arr / 255.0
+            arr = arr.clip(0, 1)
+            pil = Image.fromarray((arr * 255).astype(np.uint8))
+        else:
+            raise ValueError(f"Unexpected image array shape: {img_data.shape}")
+    else:
+        raise TypeError(f"Unsupported image type: {type(img_data)}")
+
+    # ── Resize and return ────────────────────────────────────────────
+    if pil.size != (image_size, image_size):
+        pil = pil.resize((image_size, image_size), Image.BILINEAR)
+    arr = np.array(pil, dtype=np.float32) / 255.0
+    # (H, W, C) → (C, H, W)
+    return torch.from_numpy(arr).permute(2, 0, 1).clamp(0, 1)
+
+
 class PushTDatasetAdapter:
     """Adapt PushT-like samples to MiniVLA format.
 
@@ -74,8 +170,8 @@ class PushTDatasetAdapter:
         raw = self.base_dataset[index]
 
         # ── Image ──────────────────────────────────────────────────
-        img_data = raw[self.image_key]
-        image = self._process_image(img_data)
+        img_data = _get_by_key(raw, self.image_key)
+        image = _process_image(img_data, image_size=self.image_size)
 
         # ── Instruction ─────────────────────────────────────────────
         instr = self.instruction or ""
@@ -86,8 +182,12 @@ class PushTDatasetAdapter:
         )
 
         # ── State / Action ──────────────────────────────────────────
-        state = torch.as_tensor(raw[self.state_key], dtype=torch.float32)
-        action = torch.as_tensor(raw[self.action_key], dtype=torch.float32)
+        state = torch.as_tensor(
+            _get_by_key(raw, self.state_key), dtype=torch.float32,
+        )
+        action = torch.as_tensor(
+            _get_by_key(raw, self.action_key), dtype=torch.float32,
+        )
 
         sample: Dict[str, Any] = {
             "image": image,
@@ -108,8 +208,8 @@ class PushTDatasetAdapter:
             (self.success_key, "next_success"),
         ]
         for raw_key, sample_key in meta_keys:
-            if raw_key in raw:
-                val = raw[raw_key]
+            val = _maybe_get_by_key(raw, raw_key)
+            if val is not None:
                 if isinstance(val, (np.floating, np.integer)):
                     val = val.item()
                 elif isinstance(val, np.ndarray):
@@ -118,54 +218,5 @@ class PushTDatasetAdapter:
 
         return sample
 
-    def _process_image(self, img_data: Any) -> torch.Tensor:
-        """Convert a PushT image to a CHW float32 tensor in [0, 1].
 
-        Supports:
-        - HWC uint8 numpy array (96, 96, 3)
-        - HWC float32 numpy array (96, 96, 3)
-        - CHW torch.Tensor (3, H, W)
-        - PIL Image
-        """
-        if isinstance(img_data, Image.Image):
-            pil = img_data
-        elif isinstance(img_data, torch.Tensor):
-            if img_data.ndim == 3 and img_data.shape[0] in (1, 3):
-                # Already CHW — resize if needed
-                if img_data.shape[1] != self.image_size:
-                    pil = Image.fromarray(
-                        img_data.permute(1, 2, 0).byte().numpy()
-                    )
-                    pil = pil.resize((self.image_size, self.image_size), Image.BILINEAR)
-                    return torch.as_tensor(
-                        np.array(pil), dtype=torch.float32
-                    ).permute(2, 0, 1).div(255.0).clamp(0, 1)
-                # Already correct size — normalise to [0, 1]
-                result = img_data.float()
-                if result.is_floating_point():
-                    result = result.clamp(0, 1).div(255.0)
-                return result.div(255.0).clamp(0, 1)
-            # HWC tensor
-            pil = Image.fromarray(img_data.byte().numpy())
-        elif isinstance(img_data, np.ndarray):
-            if img_data.ndim == 3 and img_data.shape[-1] in (1, 3):
-                # HWC
-                pil = Image.fromarray(img_data)
-            elif img_data.ndim == 3 and img_data.shape[0] in (1, 3):
-                # CHW
-                pil = Image.fromarray(img_data.transpose(1, 2, 0))
-            else:
-                raise ValueError(f"Unexpected image array shape: {img_data.shape}")
-        else:
-            raise TypeError(f"Unsupported image type: {type(img_data)}")
-
-        # Resize to target size
-        if pil.size != (self.image_size, self.image_size):
-            pil = pil.resize((self.image_size, self.image_size), Image.BILINEAR)
-
-        arr = np.array(pil, dtype=np.float32) / 255.0
-        # (H, W, C) → (C, H, W)
-        return torch.from_numpy(arr).permute(2, 0, 1).clamp(0, 1)
-
-
-__all__ = ["PushTDatasetAdapter"]
+__all__ = ["PushTDatasetAdapter", "_process_image", "_get_by_key"]

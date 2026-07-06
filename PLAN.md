@@ -60,22 +60,22 @@ mini_vla/datasets/episode_dataset.py  (placeholder)
 mini_vla/datasets/toy_2d_dataset.py
 mini_vla/datasets/transforms.py
 mini_vla/models/__init__.py  (placeholder)
-mini_vla/models/action_head.py  (placeholder)
-mini_vla/models/fusion.py  (placeholder)
-mini_vla/models/language_encoder.py  (placeholder)
-mini_vla/models/mini_vla.py  (placeholder)
-mini_vla/models/state_encoder.py  (placeholder)
-mini_vla/models/vision_encoder.py  (placeholder)
+mini_vla/models/action_head.py
+mini_vla/models/fusion.py
+mini_vla/models/language_encoder.py
+mini_vla/models/mini_vla.py
+mini_vla/models/state_encoder.py
+mini_vla/models/vision_encoder.py
 mini_vla/training/__init__.py
-mini_vla/training/trainer.py  (shell)
-mini_vla/training/losses.py  (placeholder)
-mini_vla/training/metrics.py  (placeholder)
-mini_vla/training/optimizer.py  (placeholder)
-mini_vla/training/checkpoint.py  (placeholder)
-mini_vla/inference/__init__.py  (placeholder)
-mini_vla/inference/predictor.py  (placeholder)
-mini_vla/inference/rollout.py  (placeholder)
-mini_vla/inference/visualizer.py  (placeholder)
+mini_vla/training/trainer.py
+mini_vla/training/losses.py
+mini_vla/training/metrics.py
+mini_vla/training/optimizer.py
+mini_vla/training/checkpoint.py
+mini_vla/inference/__init__.py
+mini_vla/inference/predictor.py
+mini_vla/inference/rollout.py
+mini_vla/inference/visualizer.py
 mini_vla/robot_interface/__init__.py
 mini_vla/robot_interface/action_adapter.py
 mini_vla/robot_interface/fake_robot.py  (placeholder)
@@ -336,30 +336,51 @@ python scripts/infer_one.py \
 
 ### 目标
 
-模型连续预测动作，FakeRobot 状态更新，最终评估成功率。
+使用 `lerobot/pusht` 数据集验证 MiniVLA 在真实机器人学习 benchmark 上的动作预测能力。
 
-### 文件变更
+### 子阶段
 
-| 文件 | 操作 |
+| 阶段 | 内容 |
 |------|------|
-| `mini_vla/inference/rollout.py` | 重写：连续 rollout |
-| `mini_vla/robot_interface/fake_robot.py` | 实现：状态更新逻辑 |
-| `scripts/rollout_fake_robot.py` | 重写：rollout 入口 |
+| Stage 5-A | PushT 数据集检查 (inspection) |
+| Stage 5-B | PushT Adapter (将 PushT sample 转为 MiniVLA 格式) |
+| Stage 5-C | PushT config + batch forward |
+| Stage 5-D | PushT 训练 smoke test (Trainer 通过 factory 接入 PushT) |
+| Stage 5-E | PushT 离线评估 + baselines (zero/mean/previous-action) |
+| Stage 5-F | 评估报告 + 可视化输出 |
+| Stage 5-G | 文档收口 |
+
+### 核心文件
+
+- `docs/12_pusht_dataset_evaluation_design.md` — 设计文档
+- `configs/data/pusht.yaml` — 数据配置
+- `configs/train/pusht_debug.yaml` — 训练配置
+- `mini_vla/datasets/pusht_adapter.py` — 适配器
+- `mini_vla/datasets/pusht_inspection.py` — 数据检查
+- `mini_vla/datasets/factory.py` — dataset factory
+- `mini_vla/evaluation/action_metrics.py` — 评估指标
+- `mini_vla/evaluation/baselines.py` — baseline 策略
+- `mini_vla/evaluation/evaluator.py` — 离线评估引擎
+- `scripts/inspect_pusht_dataset.py` — 检查 CLI
+- `scripts/evaluate_pusht.py` — 评估 CLI
 
 ### 验收
 
 ```bash
-python scripts/rollout_fake_robot.py \
-  --ckpt outputs/checkpoints/best.pt \
-  --config configs/train/debug.yaml \
-  --num-episodes 50
+python scripts/inspect_pusht_dataset.py --repo-id lerobot/pusht --max-samples 128
+python scripts/train.py --config configs/train/pusht_debug.yaml
+python scripts/evaluate_pusht.py \\
+  --config configs/train/pusht_debug.yaml \\
+  --ckpt outputs/checkpoints/best.pt
 ```
 
-预期输出：
-
-```
-Success rate: 0.86
-Average steps to success: 12.3
+验收标准：
+- inspect 能输出 PushT schema
+- MiniVLA 能训练 PushT 子集（loss finite）
+- MiniVLA test MAE < ZeroActionBaseline MAE
+- MiniVLA test MAE < MeanActionBaseline MAE
+- finite output ratio == 1.0
+- report.json / predictions.jsonl 保存成功
 Average final distance to target: 0.023
 ```
 
