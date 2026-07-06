@@ -1,4 +1,10 @@
-"""Minimal config schema checks for Stage 0."""
+"""Minimal config schema checks for training pipeline.
+
+Required sections: model, data, train.
+Model section requires name and action_dim (state_dim is optional,
+it lives in component sub-configs).
+Train section may optionally include num_workers, output_dir, checkpoint_dir.
+"""
 
 from __future__ import annotations
 
@@ -13,7 +19,7 @@ def validate_config(config: dict[str, Any]) -> None:
     if missing:
         raise ValueError(f"Missing config section(s): {', '.join(missing)}")
 
-    _require(config["model"], "model", ("name", "state_dim", "action_dim"))
+    _require(config["model"], "model", ("name", "action_dim"))
     _require(config["data"], "data", ("dataset_type", "data_root", "batch_size"))
     _require(config["train"], "train", ("epochs", "lr", "device"))
 

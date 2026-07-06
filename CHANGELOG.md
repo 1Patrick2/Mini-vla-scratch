@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.6.0 — Stage 3 Behavior Cloning Training Loop
+
+### Added
+- Training design document (docs/09_training_design.md)
+- MSE action loss (mse_action_loss)
+- Training metrics (mse, l1)
+- Optimizer factory with frozen parameter filtering (create_optimizer)
+- Full end-to-end training step test (DataLoader → model → loss → backward → step)
+- Trainer class with fit() and train_one_epoch()
+- Checkpoint save/load (save_checkpoint, load_checkpoint) with last.pt / best.pt tracking
+- Checkpoint unit tests (save, load, epoch/metrics restoration, optimizer state)
+- Training CLI (scripts/train.py) with dry-run mode, data validation, and checkpoint output paths
+
+### Changed
+- ROADMAP.md: deduplicated Stage 3 section
+- PLAN.md: updated to LLM-ready architecture, Stage 2/3 status marked complete
+- config/schema.py: removed state_dim requirement (build_model uses component-level config)
+
+### Fixed
+- Config schema now requires model.name and action_dim only; state_dim is optional
+- Test config dimension mismatch in test_training_step.py (fusion.output_dim defaulted to 128 instead of 16)
+
 ## 0.5.0 — Stage 2 MiniVLA Forward and Builder
 
 ### Added

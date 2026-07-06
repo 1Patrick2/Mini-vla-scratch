@@ -15,8 +15,8 @@ image + instruction + state → action
 |------|------|------|
 | Stage 0 | 项目骨架 + 基准文件 | ✅ 完成 |
 | Stage 1 | Toy 2D 数据管道 (generator → dataset → collate) | ✅ 完成 |
-| Stage 2 | MiniVLA 模型 forward | ⏳ |
-| Stage 3 | Behavior Cloning 训练闭环 | ⏳ |
+| Stage 2 | MiniVLA 模型 forward | ✅ 完成 |
+| Stage 3 | Behavior Cloning 训练闭环 | ✅ 完成 |
 | Stage 4 | 推理 + 可视化 | ⏳ |
 | Stage 5 | Fake Robot Rollout | ⏳ |
 | Stage 6 | Open Kaka Adapter 预留 | ⏳ |
@@ -117,8 +117,6 @@ python scripts/train.py --config configs/train/debug.yaml --dry-run
 - Stage 1-B ✅ Toy2DDataset (`mini_vla/datasets/toy_2d_dataset.py`)
 - Stage 1-C ✅ DataLoader Collation (`mini_vla/datasets/collate.py`)
 
-### 输出格式
-
 ### 目标
 
 生成合成 2D manipulation episode 数据，供后续模型训练使用。
@@ -209,55 +207,32 @@ pytest tests/test_dataset.py
 
 ---
 
-## Stage 2：MiniVLA 模型 Forward ⏳
+## Stage 2：MiniVLA 模型 Forward ✅
 
-### 目标
+### 目标 ✅ 已完成
 
-```
-image → vision_encoder → image_feat
-text → language_encoder → text_feat
-state → state_encoder → state_feat
-concat → fusion → action_head → action_pred
-```
-
-### 模型架构
+当前真实架构：
 
 ```
-VisionEncoder (small CNN):
-  Conv2d(3, 16, 3) → ReLU → MaxPool2d(2)
-  Conv2d(16, 32, 3) → ReLU → MaxPool2d(2)
-  Conv2d(32, 64, 3) → ReLU → MaxPool2d(2)
-  Flatten → Linear → output_dim
-
-LanguageEncoder (GRU):
-  Embedding(vocab_size, embed_dim)
-  GRU(embed_dim, hidden_dim)
-  Last hidden state → output_dim
-
-StateEncoder (MLP):
-  Linear(state_dim, hidden_dim) → ReLU
-  Linear(hidden_dim, output_dim)
-
-Fusion (concat + MLP):
-  Concat(image_feat, text_feat, state_feat)
-  Linear → ReLU → Linear → hidden_dim
-
-ActionHead (continuous MLP):
-  Linear(hidden_dim, hidden_dim) → ReLU
-  Linear(hidden_dim, action_dim)
+image → SmallCNNVisionEncoder → image_feat    Tensor[B, 128]
+input_ids + attention_mask → MockLLMTextEncoder → text_feat    Tensor[B, 128]
+state → StateEncoder → state_feat    Tensor[B, 128]
+concat(image_feat, text_feat, state_feat) → FusionMLP → ActionHead → action_pred    Tensor[B, 2]
 ```
 
-### 文件变更
+### 已完成组件
 
 | 文件 | 操作 |
 |------|------|
-| `mini_vla/models/vision_encoder.py` | 实现 small CNN |
-| `mini_vla/models/language_encoder.py` | 实现 Embedding + GRU |
-| `mini_vla/models/state_encoder.py` | 实现 MLP |
-| `mini_vla/models/fusion.py` | 实现 concat + MLP |
-| `mini_vla/models/action_head.py` | 实现 continuous MLP |
-| `mini_vla/models/mini_vla.py` | 组装完整 MiniVLA |
-| `tests/test_model_forward.py` | 新增：forward shape 测试 |
+| `mini_vla/models/vision_encoder.py` | SmallCNNVisionEncoder |
+| `mini_vla/models/language_encoder.py` | MockLLMTextEncoder (LLM-ready) |
+| `mini_vla/models/state_encoder.py` | StateEncoder MLP |
+| `mini_vla/models/fusion.py` | Concat + FusionMLP |
+| `mini_vla/models/action_head.py` | Continuous MLP ActionHead |
+| `mini_vla/models/mini_vla.py` | 完整 MiniVLA 组装 |
+| `mini_vla/models/builder.py` | Config-driven build_model() + strict validation |
+| `tests/test_model_forward.py` | Forward shape 测试 |
+| `tests/test_model_builder.py` | Builder config/dim validation 测试 |
 
 ### 验收
 

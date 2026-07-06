@@ -71,6 +71,8 @@ fused_feat → ActionHead → action_pred    Tensor[B, 2]
 
 **Acceptance:** All component forward shape tests pass + MiniVLA can consume DataLoader batch.
 
+---
+
 ## Stage 3: Behavior Cloning Training Loop
 
 **Goal:** Run end-to-end training: dataset → model → loss → backward → checkpoint.
@@ -82,30 +84,12 @@ fused_feat → ActionHead → action_pred    Tensor[B, 2]
 
 **Main files:**
 - `mini_vla/training/losses.py`
-- `mini_vla/training/trainer.py`
-- `mini_vla/training/checkpoint.py`
-- `tests/test_training_step.py`
-
-**Command:**
-```bash
-python scripts/train.py --config configs/train/debug.yaml
-```
-
-**Acceptance:** Training loss decreases over epochs, checkpoint saved to `outputs/checkpoints/best.pt`.
-
----
-
-## Stage 3: Behavior Cloning Training Loop
-
-**Goal:** Run end-to-end training: dataset → model → loss → backward → checkpoint.
-
-**Main files:**
-- `mini_vla/training/losses.py`
 - `mini_vla/training/metrics.py`
 - `mini_vla/training/optimizer.py`
 - `mini_vla/training/checkpoint.py`
-- `mini_vla/training/trainer.py` (full implementation)
+- `mini_vla/training/trainer.py`
 - `tests/test_training_step.py`
+- `tests/test_checkpoint.py`
 
 **Command:**
 ```bash

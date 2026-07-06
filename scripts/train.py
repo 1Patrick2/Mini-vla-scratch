@@ -1,4 +1,9 @@
-﻿"""Training command entry point."""
+"""Training command entry point.
+
+Usage:
+    python scripts/train.py --config configs/train/debug.yaml
+    python scripts/train.py --config configs/train/debug.yaml --dry-run
+"""
 
 from __future__ import annotations
 
@@ -24,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Load config and print trainer summary without training.",
+        help="Load config and print summary without training.",
     )
     return parser
 
@@ -32,10 +37,43 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_parser().parse_args()
     config = load_config(Path(args.config))
+
+    model_name = config["model"]["name"]
+    dataset_type = config["data"]["dataset_type"]
+    epochs = config["train"]["epochs"]
+    device = config["train"]["device"]
+    data_root = config["data"]["data_root"]
+
+    print(f"Config: {args.config}")
+    print(f"Model:  {model_name}")
+    print(f"Data:   {dataset_type}  @ {data_root}")
+    print(f"Train:  {epochs} epochs, device={device}")
+
+    if args.dry_run:
+        print("Dry-run mode.  No training executed.")
+        return
+
+    # Check that data exists
+    data_path = Path(data_root)
+    if not (data_path / "episodes").is_dir():
+        print(
+            f"Error: no data found at {data_root}.\n"
+            f"Generate data first:\n"
+            f"  python scripts/generate_toy_data.py "
+            f"--config configs/data/toy_2d.yaml --num-episodes 5"
+        )
+        sys.exit(1)
+
     trainer = Trainer(config)
-    print(trainer.describe())
-    if not args.dry_run:
-        print("Stage 0 skeleton only: training loop will be implemented in Stage 3.")
+    print(f"\nStarting training for {epochs} epoch(s) ...")
+    trainer.fit(epochs=epochs)
+
+    ckpt_dir = Path(
+        config.get("paths", {}).get("output_root", "outputs")
+    ) / "checkpoints"
+    print(f"\nDone!  Checkpoints saved to {ckpt_dir}/")
+    print(f"  last: {ckpt_dir / 'last.pt'}")
+    print(f"  best: {ckpt_dir / 'best.pt'}")
 
 
 if __name__ == "__main__":

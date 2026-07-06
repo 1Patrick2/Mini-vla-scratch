@@ -15,6 +15,7 @@ data/*
 !data/.gitkeep
 !data/toy_2d/
 !data/toy_2d/.gitkeep
+data/toy_2d/episodes/
 !data/episodes/
 !data/episodes/.gitkeep
 
