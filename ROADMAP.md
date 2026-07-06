@@ -124,7 +124,9 @@ python scripts/infer_one.py --ckpt outputs/checkpoints/best.pt --config configs/
 
 **Acceptance:** Predictor loads checkpoint, predict returns Tensor[2], select_action works, output is finite and clippable, visualizer saves prediction.png, CLI prints pred/gt/L1 error. No Stage 5 rollout, Transformer, RL, or LeRobot dependency introduced.
 
----## Stage 5: Fake Robot Rollout
+---
+
+## Stage 5: Fake Robot Rollout
 
 **Goal:** Continuous action prediction loop with fake robot state update and success evaluation.
 
