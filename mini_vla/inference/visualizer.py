@@ -24,7 +24,7 @@ def tensor_image_to_pil(image: torch.Tensor) -> Image.Image:
     """
     arr = image.cpu().detach()
     if arr.is_floating_point():
-        arr = arr.mul(255).byte()
+        arr = arr.clamp(0, 1).mul(255).byte()
     # (C, H, W) → (H, W, C)
     arr = arr.permute(1, 2, 0).numpy()
     return Image.fromarray(arr, mode="RGB")

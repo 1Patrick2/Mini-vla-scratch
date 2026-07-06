@@ -101,25 +101,30 @@ python scripts/train.py --config configs/train/debug.yaml
 
 ---
 
-## Stage 4: Inference and Visualization
+## Stage 4: Policy Inference and Visualization ✅ Complete
 
-**Goal:** Load a trained model, predict action for a single sample, and visualize.
+**Goal:** Load a trained model, predict action for a single sample, visualize, and CLI.
 
-**Main files:**
-- `mini_vla/inference/predictor.py`
-- `mini_vla/inference/visualizer.py`
-- `scripts/infer_one.py`
+**Status:** Predictor with policy-style select_action, action clipping, PIL-based visualizer
+(pred in blue, GT in green), and infer_one CLI all implemented.
+
+**Key files:**
+- `mini_vla/inference/predictor.py` — Predictor with predict/select_action
+- `mini_vla/inference/visualizer.py` — PIL arrow drawing (blue pred, green gt)
+- `scripts/infer_one.py` — CLI with --config, --ckpt, --sample-index, --output
+- `docs/10_policy_inference_and_robot_learning_notes.md` — ML/DL/IL/BC/RL notes
+- `tests/test_inference_predictor.py` — 8 tests
+- `tests/test_inference_visualizer.py` — 8 tests
+- `tests/test_infer_one_cli.py` — 6 tests (subprocess)
 
 **Command:**
 ```bash
 python scripts/infer_one.py --ckpt outputs/checkpoints/best.pt --config configs/train/debug.yaml
 ```
 
-**Acceptance:** Generates `outputs/predictions/prediction.png` with direction arrow overlay.
+**Acceptance:** Predictor loads checkpoint, predict returns Tensor[2], select_action works, output is finite and clippable, visualizer saves prediction.png, CLI prints pred/gt/L1 error. No Stage 5 rollout, Transformer, RL, or LeRobot dependency introduced.
 
----
-
-## Stage 5: Fake Robot Rollout
+---## Stage 5: Fake Robot Rollout
 
 **Goal:** Continuous action prediction loop with fake robot state update and success evaluation.
 

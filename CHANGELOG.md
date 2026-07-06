@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.7.0 — Stage 4 Policy Inference and Visualization
+
+### Added
+- Predictor with policy-style predict/select_action API
+- Checkpoint-based single-sample inference (build_model + load_checkpoint + model.eval)
+- Action postprocessing with configurable clip_action/action_limit
+- Manual loaded model consistency test (clip_action=False matches manual forward)
+- Prediction visualizer (PIL-based, blue pred arrow, optional green gt arrow)
+- infer_one CLI with --config, --ckpt, --data-root, --sample-index, --output,
+  --device, --arrow-scale, --no-clip-action, --action-limit
+- CLI subprocess tests (end-to-end, --no-clip-action, error checks)
+- Policy inference and robot learning notes (docs/10_...)
+
+### Changed
+- ROADMAP.md: Stage 4 marked complete
+- README.md: updated to Stage 4 status, added Predictor/visualizer/CLI to implemented
+
 ## 0.6.0 — Stage 3 Behavior Cloning Training Loop
 
 ### Added

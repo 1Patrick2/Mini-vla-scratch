@@ -54,25 +54,40 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_parser().parse_args()
 
+    # Validate inputs
+    ckpt_path = Path(args.ckpt)
+    if not ckpt_path.is_file():
+        print(f"Error: checkpoint not found: {args.ckpt}", file=sys.stderr)
+        sys.exit(1)
+
     # Load config
     config = load_config(Path(args.config))
     if args.data_root:
         config["data"]["data_root"] = args.data_root
 
-    data_root = config["data"]["data_root"]
-    device = args.device
+    data_root = Path(config["data"]["data_root"])
+    if not data_root.exists():
+        print(f"Error: data root not found: {data_root}", file=sys.stderr)
+        sys.exit(1)
 
     # Build Predictor
     predictor = Predictor(
         config,
         args.ckpt,
-        device=device,
+        device=args.device,
         clip_action=not args.no_clip_action,
         action_limit=args.action_limit,
     )
 
     # Load dataset and get sample
-    ds = Toy2DDataset(root=data_root)
+    ds = Toy2DDataset(root=str(data_root))
+    if args.sample_index < 0 or args.sample_index >= len(ds):
+        print(
+            f"Error: sample index {args.sample_index} out of range "
+            f"[0, {len(ds) - 1}]",
+            file=sys.stderr,
+        )
+        sys.exit(1)
     sample = ds[args.sample_index]
 
     # Predict

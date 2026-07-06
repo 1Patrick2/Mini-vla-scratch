@@ -17,7 +17,7 @@ image + instruction + state → action
 | Stage 1 | Toy 2D 数据管道 (generator → dataset → collate) | ✅ 完成 |
 | Stage 2 | MiniVLA 模型 forward | ✅ 完成 |
 | Stage 3 | Behavior Cloning 训练闭环 | ✅ 完成 |
-| Stage 4 | 推理 + 可视化 | ⏳ |
+| Stage 4 | 推理 + 可视化 (Policy Inference) | ✅ 完成 |
 | Stage 5 | Fake Robot Rollout | ⏳ |
 | Stage 6 | Open Kaka Adapter 预留 | ⏳ |
 | V1+ | action chunk / episode / pretrain | 🔮 远期 |

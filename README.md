@@ -10,12 +10,12 @@ image + instruction + state -> action
 
 ## Current Stage
 
-**V0: Toy 2D Mini VLA — Stage 3 behavior cloning training loop completed; preparing Stage 4 inference and visualization.**
+**V0: Toy 2D Mini VLA — Stage 4 policy inference and visualization completed; preparing Stage 5 fake robot rollout.**
 
-The full training pipeline is complete: Toy 2D data pipeline, SmallCNN vision encoder, LLM-ready text backbone,
-attention_mask support, StateEncoder, FusionMLP, ActionHead, MiniVLA end-to-end forward, config-driven
-model builder with strict validation, MSE behavior cloning loss, optimizer with frozen parameter filtering,
-full Trainer loop, checkpoint save/load (last.pt + best.pt), and training CLI.
+The full pipeline is complete: Toy 2D data pipeline, MiniVLA model forward, config-driven builder,
+behavior cloning training loop, checkpoint save/load, policy-style Predictor with action clipping,
+PIL-based prediction visualizer, and infer_one CLI.  The project now covers the full
+"generate data → train → inference → visualize" loop for a Toy 2D VLA.
 
 ## Implemented
 
@@ -40,11 +40,15 @@ full Trainer loop, checkpoint save/load (last.pt + best.pt), and training CLI.
 - Checkpoint save/load (last.pt + best.pt tracking)
 - Training CLI (scripts/train.py)
 - Action clipping utility
-- Component, dataset, model-forward, training, and checkpoint tests (83 passing)
+- Predictor with policy-style select_action API
+- Action postprocessing with configurable clip limit
+- Prediction visualizer (PIL-based, pred/gt arrows)
+- infer_one CLI with full parameter support
+- Policy inference and robot learning notes
+- Component, dataset, model-forward, training, checkpoint, inference, and CLI tests (108 passing)
 
 ## Planned
 
-- Single-sample inference and visualization
 - Fake robot rollout
 - Future Open Kaka robot adapter
 
