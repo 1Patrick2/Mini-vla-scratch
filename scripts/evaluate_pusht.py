@@ -68,14 +68,17 @@ def _build_mock_eval_pipeline(args, config):
     )
     from mini_vla.datasets import Toy2DDataset
     ds = Toy2DDataset(root=data_root)
+    limit = args.max_samples if args.max_samples > 0 else len(ds)
+    limit = min(limit, len(ds))
     raw_list = []
-    for s in [ds[i] for i in range(min(8, len(ds)))]:
+    for i in range(limit):
+        s = ds[i]
         raw_list.append({
             "observation.image": (s["image"].permute(1, 2, 0).numpy() * 255).astype(np.uint8),
             "observation.state": s["state"].numpy(),
             "action": s["action"].numpy(),
-            "episode_index": 0,
-            "frame_index": 0,
+            "episode_index": i // 4,
+            "frame_index": i % 4,
         })
     adapter = PushTDatasetAdapter(raw_list)
     samples = [adapter[i] for i in range(len(adapter))]
@@ -114,7 +117,9 @@ def main() -> None:
 
     if args.mock_data:
         predictor, eval_samples = _build_mock_eval_pipeline(args, config)
-        train_samples = []
+        train_samples, eval_samples = _split_by_episode(
+            eval_samples, heldout_ratio=args.heldout_ratio,
+        )
     else:
         data_cfg = config["data"]
         if args.repo_id:

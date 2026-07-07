@@ -82,3 +82,59 @@ class TestEvaluatePolicyOnDataset:
         policy = _RandomPolicy()
         report = evaluate_policy_on_dataset(policy, samples, action_dim=2, max_samples=5)
         assert report["num_samples"] == 5
+
+
+def _make_samples_with_var_actions():
+    """Return samples where train/eval have clearly distinct action means."""
+    eval_s = [
+        {"action": torch.tensor([10.0, 10.0]), "episode_index": 0, "frame_index": 0},
+        {"action": torch.tensor([10.0, 10.0]), "episode_index": 0, "frame_index": 1},
+    ]
+    baseline_s = [
+        {"action": torch.tensor([0.0, 0.0]), "episode_index": 1, "frame_index": 0},
+        {"action": torch.tensor([0.0, 0.0]), "episode_index": 1, "frame_index": 1},
+    ]
+    return eval_s, baseline_s
+
+
+class TestMeanActionBaselineSource:
+    def test_baseline_dataset_source(self):
+        eval_s, baseline_s = _make_samples_with_var_actions()
+        policy = _DummyPolicy(shift=0.0)
+        report = evaluate_policy_on_dataset(
+            policy, eval_s, action_dim=2,
+            baseline_dataset=baseline_s,
+        )
+        assert report["mean_action_source"] == "baseline_dataset"
+
+    def test_baseline_avoids_eval_pool_leakage(self):
+        """Mean baseline should be near [0,0] (baseline mean), not [10,10]."""
+        eval_s, baseline_s = _make_samples_with_var_actions()
+        policy = _DummyPolicy(shift=1.0)
+        report = evaluate_policy_on_dataset(
+            policy, eval_s, action_dim=2,
+            baseline_dataset=baseline_s,
+        )
+        bm = report["baselines"]["mean_action"]
+        # Mean computed from baseline_s is ~[0,0]; MAE with eval targets ~[10,10] = ~10
+        assert bm["mae"] > 5.0, (
+            f"Mean MAE {bm['mae']} should be high (baseline_dataset)"
+        )
+
+
+class TestPreviousActionSorting:
+    def test_shuffled_input_still_correct(self):
+        """Evaluator sorts by episode/frame, so PreviousActionBaseline works."""
+        samples = [
+            {"action": torch.tensor([5.0, 5.0]), "episode_index": 0, "frame_index": 1},
+            {"action": torch.tensor([1.0, 1.0]), "episode_index": 0, "frame_index": 0},
+            {"action": torch.tensor([9.0, 9.0]), "episode_index": 1, "frame_index": 0},
+        ]
+        policy = _DummyPolicy(shift=0.0)
+        report = evaluate_policy_on_dataset(policy, samples, action_dim=2)
+        bm = report["baselines"]["previous_action"]
+        # After sorting: ep0_f0=[1,1] (no prev -> zero),
+        #   ep0_f1=[5,5] (prev=[1,1]),
+        #   ep1_f0=[9,9] (ep change -> zero)
+        # MAE = mean(|1-0|,|5-1|,|9-0|)/2 = (1+4+9)/2 = 7
+        assert bm["mae"] > 0, "Previous baseline should have non-zero error"

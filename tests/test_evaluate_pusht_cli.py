@@ -100,10 +100,25 @@ class TestEvaluatePushTCLI:
         assert "Report saved" in result.stdout
 
     def test_cli_with_heldout_split(self):
-        """CLI with --heldout-ratio runs without error."""
-        result = self._run("--mock-data", "--heldout-ratio", "0.2")
+        """CLI with --heldout-ratio produces a report with held-out semantics."""
+        # Use 8 samples + heldout 0.5: 2 episodes, 1 held out
+        result = self._run("--mock-data", "--heldout-ratio", "0.5", "--max-samples", "8")
         assert result.returncode == 0, f"stderr: {result.stderr}"
         assert self.report_path.exists()
+        report = json.loads(self.report_path.read_text())
+        assert report["num_samples"] > 0
+        # With mock data: 8 samples, 2 episodes, heldout=0.5
+        # 1 episode (4 samples) held out for eval, 1 for train/baseline
+        assert report["num_samples"] == 4, (
+            f"Expected 4 held-out samples, got {report['num_samples']}"
+        )
+
+    def test_cli_mock_data_checks_baseline_source(self):
+        """Mock CLI with heldout reports mean_action_source."""
+        result = self._run("--mock-data", "--heldout-ratio", "0.5", "--max-samples", "8")
+        assert result.returncode == 0, f"stderr: {result.stderr}"
+        report = json.loads(self.report_path.read_text())
+        assert "mean_action_source" in report
 
     def test_evaluate_on_mock_dataset(self, tmp_path):
         """evaluate_policy_on_dataset works with mock PushT samples."""
