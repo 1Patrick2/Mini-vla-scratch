@@ -27,7 +27,7 @@ and **realdata pytest with `RUN_REAL_PUSHT=1`**.
 pip install -e .
 python scripts/generate_toy_data.py --config configs/data/toy_2d.yaml --num-episodes 10
 python scripts/train.py --config configs/train/debug.yaml
-python scripts/evaluate_pusht.py --config configs/train/pusht_debug.yaml --ckpt outputs/checkpoints/best.pt --mock-data
+python scripts/infer_one.py --config configs/train/debug.yaml --ckpt outputs/checkpoints/best.pt
 ```
 
 ### PushT (real data, optional LeRobot dependency)
@@ -66,7 +66,7 @@ python -m pytest tests/test_evaluate_pusht_cli.py -m realdata
 - **DatasetSpec + Registry** for multi-dataset support
 - **Generic robot dataset inspect** CLI
 - **Action/state normalization** utilities
-- Component, dataset, model-forward, training, checkpoint, inference, and PushT tests (185+ passing)
+- Component, dataset, model-forward, training, checkpoint, inference, and PushT tests
 
 ## Planned
 

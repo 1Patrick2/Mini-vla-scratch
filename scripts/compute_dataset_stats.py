@@ -61,15 +61,15 @@ def main() -> None:
     args = build_parser().parse_args()
 
     spec = get_dataset_spec(args.dataset_name)
-    state_key = spec.state_keys[0] if spec.state_keys else "observation.state"
-    action_key = spec.action_keys[0] if spec.action_keys else "action"
+    spec.state_keys[0] if spec.state_keys else "observation.state"
+    spec.action_keys[0] if spec.action_keys else "action"
 
     if args.mock_data:
         samples = _make_mock_samples(spec, n=args.max_samples)
     else:
         try:
-            from mini_vla.datasets.pusht_lerobot_loader import load_pusht_lerobot
-            samples = load_pusht_lerobot(
+            from mini_vla.datasets.lerobot_loader import load_lerobot_samples
+            samples = load_lerobot_samples(
                 repo_id=args.repo_id or spec.repo_id,
                 max_samples=args.max_samples,
             )
@@ -79,8 +79,8 @@ def main() -> None:
 
     stats = compute_stats(
         samples,
-        state_key=state_key,
-        action_key=action_key,
+        state_keys=spec.state_keys,
+        action_keys=spec.action_keys,
     )
 
     out_path = save_stats(stats, args.output)

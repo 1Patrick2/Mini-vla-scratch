@@ -47,12 +47,13 @@ def main() -> None:
     samples = None
     if not args.mock_data:
         try:
-            from mini_vla.datasets.pusht_lerobot_loader import load_pusht_lerobot
+            from mini_vla.datasets.lerobot_loader import load_lerobot_samples
             from mini_vla.datasets.registry import get_dataset_spec
             spec = get_dataset_spec(args.dataset_name)
-            samples = load_pusht_lerobot(
+            samples = load_lerobot_samples(
                 repo_id=args.repo_id or spec.repo_id,
                 max_samples=args.max_samples,
+                validate=False,
             )
         except (ImportError, Exception) as e:
             print(f"[ERROR] Could not load real data: {e}", file=sys.stderr)

@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 import torch
 
@@ -64,25 +64,48 @@ def compute_stats(
     samples: Sequence[Dict[str, Any]],
     state_key: str = "observation.state",
     action_key: str = "action",
+    state_keys: Optional[Sequence[str]] = None,
+    action_keys: Optional[Sequence[str]] = None,
     eps: float = 1e-6,
 ) -> NormalizationStats:
     """Compute mean and std for state and action from a list of samples.
 
+    Supports candidate key lists via ``state_keys`` and ``action_keys``.
+    If candidate lists are provided, the first matching key from each
+    sample is used (via ``find_first_key``).  Falls back to the
+    single-key params for backward compatibility.
+
     Args:
-        samples: List of sample dicts containing ``state_key`` and
-            ``action_key``.
-        state_key: Key for the state tensor in each sample.
-        action_key: Key for the action tensor in each sample.
+        samples: List of sample dicts containing state and action keys.
+        state_key: Single key fallback (default ``observation.state``).
+        action_key: Single key fallback (default ``action``).
+        state_keys: Optional list of candidate state keys.
+        action_keys: Optional list of candidate action keys.
         eps: Small constant for std denominator.
 
     Returns:
         A ``NormalizationStats`` instance.
     """
+    from mini_vla.datasets.key_utils import find_first_key
+
     state_list: List[torch.Tensor] = []
     action_list: List[torch.Tensor] = []
     for s in samples:
-        st = s.get(state_key)
-        ac = s.get(action_key)
+        state_k = find_first_key(s, state_keys) if state_keys else state_key
+        action_k = find_first_key(s, action_keys) if action_keys else action_key
+        st = s.get(state_k) if isinstance(state_k, str) else None
+        ac = s.get(action_k) if isinstance(action_k, str) else None
+        if st is None and state_keys:
+            # Try all candidates directly as flat keys
+            for k in state_keys:
+                if k in s:
+                    st = s[k]
+                    break
+        if ac is None and action_keys:
+            for k in action_keys:
+                if k in s:
+                    ac = s[k]
+                    break
         if st is not None:
             state_list.append(torch.as_tensor(st, dtype=torch.float32))
         if ac is not None:

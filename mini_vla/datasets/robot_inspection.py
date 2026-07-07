@@ -10,19 +10,13 @@ from typing import Any, Dict, List, Optional, Sequence
 import numpy as np
 import torch
 
+from mini_vla.datasets.key_utils import (
+    find_first_key,
+    get_by_key,
+    list_available_keys,
+)
 from mini_vla.datasets.registry import get_dataset_spec
 from mini_vla.datasets.spec import DatasetSpec
-
-
-def _find_first_match(
-    available: Sequence[str],
-    candidates: Sequence[str],
-) -> Optional[str]:
-    """Return the first candidate key that exists in ``available``."""
-    for key in candidates:
-        if key in available:
-            return key
-    return None
 
 
 def inspect_robot_dataset(
@@ -55,34 +49,38 @@ def inspect_robot_dataset(
         return report
 
     s0 = samples[0]
-    available = list(s0.keys())
+    available = list_available_keys(s0)
     report["available_keys"] = available
 
-    # Match keys
-    matched_image = _find_first_match(available, spec.image_keys)
-    matched_state = _find_first_match(available, spec.state_keys)
-    matched_action = _find_first_match(available, spec.action_keys)
-    matched_language = _find_first_match(available, spec.language_keys)
+    # Match keys using key_utils (supports flat + nested dotted keys)
+    matched_image = find_first_key(s0, spec.image_keys)
+    matched_state = find_first_key(s0, spec.state_keys)
+    matched_action = find_first_key(s0, spec.action_keys)
+    matched_language = find_first_key(s0, spec.language_keys)
 
     report["matched_image_key"] = matched_image
     report["matched_state_key"] = matched_state
     report["matched_action_key"] = matched_action
     report["matched_language_key"] = matched_language
+    report["has_image"] = matched_image is not None
+    report["has_state"] = matched_state is not None
+    report["has_action"] = matched_action is not None
+    report["has_language"] = matched_language is not None
 
-    # Shapes
+    # Shapes (using get_by_key for nested support)
     if matched_image:
-        t = torch.as_tensor(s0[matched_image])
+        t = torch.as_tensor(get_by_key(s0, matched_image))
         report["image_shape"] = list(t.shape)
     if matched_state:
-        t = torch.as_tensor(s0[matched_state])
+        t = torch.as_tensor(get_by_key(s0, matched_state))
         report["state_shape"] = list(t.shape)
     if matched_action:
-        t = torch.as_tensor(s0[matched_action])
+        t = torch.as_tensor(get_by_key(s0, matched_action))
         report["action_shape"] = list(t.shape)
 
     # Instruction example
     if matched_language:
-        instr = s0.get(matched_language)
+        instr = get_by_key(s0, matched_language)
         if instr is not None:
             report["instruction_example"] = str(instr)
     if "instruction_example" not in report and spec.default_instruction:
@@ -102,6 +100,8 @@ def inspect_robot_dataset(
         rec_parts.append(f"action {report.get('action_shape')}")
     else:
         rec_parts.append("no matched action key")
+    if not matched_image or not matched_state or not matched_action:
+        rec_parts.append("inspect only — missing required keys for training")
     report["matched_summary"] = ", ".join(rec_parts)
 
     return report
@@ -112,10 +112,7 @@ def _make_mock_samples(
     n: int = 4,
     seed: int = 42,
 ) -> List[Dict[str, Any]]:
-    """Generate mock samples that follow a spec's key candidates.
-
-    Only the first candidate for each key group is populated.
-    """
+    """Generate mock samples that follow a spec's key candidates."""
     rng = np.random.RandomState(seed)
     samples = []
     for i in range(n):
