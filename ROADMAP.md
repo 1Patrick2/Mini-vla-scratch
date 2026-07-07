@@ -126,13 +126,18 @@ python scripts/infer_one.py --ckpt outputs/checkpoints/best.pt --config configs/
 
 ---
 
-## Stage 5: PushT Dataset Evaluation ⏳
+## Stage 5: PushT Dataset Evaluation ✅ Complete
 
 **Goal:** Use the `lerobot/pusht` dataset to verify MiniVLA action prediction
 on a real robot-learning benchmark, with offline evaluation and baselines.
 
+**Status:** Real PushT vision data loading, adapter, training, held-out episode
+evaluation, baseline comparison (zero/mean/previous-action), and evaluation
+report all implemented and validated on real PushT data via LeRobotDataset.
+Model beats zero-action and mean-action baselines on held-out episodes.
+
 **Key files:**
-- `docs/12_pusht_dataset_evaluation_design.md` — design doc
+- `docs/12_pusht_dataset_evaluation_design.md` — design doc + validation results
 - `configs/data/pusht.yaml` — PushT data config
 - `configs/train/pusht_debug.yaml` — PushT training config
 - `mini_vla/datasets/pusht_adapter.py` — PushT → MiniVLA sample adapter

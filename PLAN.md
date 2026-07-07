@@ -18,7 +18,7 @@ image + instruction + state → action
 | Stage 2 | MiniVLA 模型 forward | ✅ 完成 |
 | Stage 3 | Behavior Cloning 训练闭环 | ✅ 完成 |
 | Stage 4 | 推理 + 可视化 (Policy Inference) | ✅ 完成 |
-| Stage 5 | PushT Dataset Evaluation | ⏳ |
+| Stage 5 | PushT Dataset Evaluation | ✅ 完成 |
 | Stage 6 | Open Kaka Adapter 预留 | ⏳ |
 | V1+ | action chunk / episode / pretrain | 🔮 远期 |
 
@@ -332,7 +332,7 @@ python scripts/infer_one.py \
 
 ---
 
-## Stage 5：PushT Dataset Evaluation ⏳
+## Stage 5：PushT Dataset Evaluation ✅
 
 ### 目标
 

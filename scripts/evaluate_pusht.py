@@ -178,15 +178,21 @@ def main() -> None:
             print(f"  {name:20s}  MAE={bm['mae']:.6f}  ({beats} model beats baseline)")
 
     # Add dataset metadata to report
+    has_image = any("image" in s for s in
+            (eval_samples if eval_samples else train_samples))
     report["dataset"] = {
         "dataset_type": "pusht",
+        "repo_id": config["data"].get("repo_id", "lerobot/pusht"),
         "loader": config["data"].get("loader", "lerobot"),
-        "mode": "vision",
-        "has_image": True,
+        "mode": "vision" if has_image else "state_only",
+        "has_image": has_image,
         "max_samples": args.max_samples,
         "heldout_ratio": args.heldout_ratio,
         "mean_action_source": report.get("mean_action_source"),
     }
+    if args.heldout_ratio > 0:
+        report["dataset"]["num_eval_samples"] = len(eval_samples)
+        report["dataset"]["num_train_samples"] = len(train_samples)
 
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)

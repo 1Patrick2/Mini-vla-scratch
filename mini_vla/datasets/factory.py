@@ -38,6 +38,7 @@ def build_dataset(
         return PushTDatasetAdapter(
             base_dataset,
             image_key=data_cfg.get("image_key", "observation.image"),
+            image_keys=data_cfg.get("image_keys"),
             state_key=data_cfg.get("state_key", "observation.state"),
             action_key=data_cfg.get("action_key", "action"),
             image_size=data_cfg.get("image_size", 64),
