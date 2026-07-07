@@ -164,15 +164,29 @@ python scripts/evaluate_pusht.py --config configs/train/pusht_debug.yaml --ckpt 
 - MiniVLA beats zero-action and mean-action baselines
 - report.json saved with metrics and baseline comparisons
 
-## Stage 6: Open Kaka Adapter Skeleton
+## Stage 6: Dataset Zoo + Action Normalization ⏳
 
-**Goal:** Design and implement the Open Kaka robot adapter interface (no real robot).
+**Goal:** Extend MiniVLA from single-dataset (PushT) to a multi-dataset
+framework with DatasetSpec, registry, generic adapter, action
+normalization, and ALOHA/LIBERO feasibility inspect.
 
-**Main files:**
-- `mini_vla/robot_interface/open_kaka_adapter.py`
-- `docs/05_open_kaka_integration.md`
+**Key files:**
+- `docs/13_dataset_zoo_and_normalization_plan.md` — design doc
+- `mini_vla/datasets/spec.py` — DatasetSpec dataclass
+- `mini_vla/datasets/registry.py` — dataset registry
+- `mini_vla/datasets/normalization.py` — action/state normalizer
+- `scripts/inspect_robot_dataset.py` — generic dataset inspect CLI
+- `scripts/compute_dataset_stats.py` — normalisation stats CLI
+- `configs/train/pusht_normalized.yaml` — normalised training config
+- `requirements-robot.txt` — optional LeRobot dependencies
 
-**Acceptance:** Adapter can be imported and called without error.
+**Acceptance:**
+- Stage 5 raw PushT pipeline still works
+- PushT normalized stats compute works
+- Generic inspect_robot_dataset.py works with mock & real PushT
+- ALOHA sim inspect succeeds or gives clear diagnostic
+- LIBERO inspect succeeds or gives clear diagnostic
+- Default pytest does not require network
 
 ---
 

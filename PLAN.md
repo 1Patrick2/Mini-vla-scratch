@@ -19,8 +19,10 @@ image + instruction + state → action
 | Stage 3 | Behavior Cloning 训练闭环 | ✅ 完成 |
 | Stage 4 | 推理 + 可视化 (Policy Inference) | ✅ 完成 |
 | Stage 5 | PushT Dataset Evaluation | ✅ 完成 |
-| Stage 6 | Open Kaka Adapter 预留 | ⏳ |
-| V1+ | action chunk / episode / pretrain | 🔮 远期 |
+| Stage 6 | Dataset Zoo + Action Normalization | ⏳ |
+| Stage 7 | Better BC Training + Temporal Context | 🔮 |
+| Stage 8 | ACT-lite / Action Chunking | 🔮 |
+| Stage 9 | Export / Deployment | 🔮 |
 
 ---
 
@@ -385,27 +387,36 @@ python scripts/evaluate_pusht.py \\
 
 ---
 
-## Stage 6：Open Kaka Adapter 预留 ⏳
+## Stage 6：Dataset Zoo + Action Normalization ⏳
 
 ### 目标
 
-不连真机，只做接口预留和设计文档。
+把 MiniVLA 从只支持 PushT 的单数据集项目，升级为支持多 LeRobot 数据集的
+Dataset Zoo 框架，并加入 action/state normalization。
 
-### 文件变更
+### 关键产出
 
-| 文件 | 操作 |
-|------|------|
-| `mini_vla/robot_interface/open_kaka_adapter.py` | 接口定义 + 占位实现 |
-| `docs/05_open_kaka_integration.md` | 更新：集成方案 |
+- DatasetSpec / DatasetRegistry 数据集规范框架
+- Generic robot dataset inspect CLI
+- Action normalization stats computation
+- Normalized training/evaluation pipeline
+- ALOHA sim / LIBERO feasibility inspect
+
+### 文件
+
+- `configs/train/pusht_normalized.yaml`
+- `docs/13_dataset_zoo_and_normalization_plan.md`
+- `mini_vla/datasets/spec.py` / `registry.py` / `normalization.py`
+- `scripts/inspect_robot_dataset.py` / `scripts/compute_dataset_stats.py`
+- `requirements-robot.txt` / `environment-robot.yml`
 
 ### 验收
 
-```python
-from mini_vla.robot_interface.open_kaka_adapter import OpenKakaAdapter
-adapter = OpenKakaAdapter()
-action = [0.1, 0.0]
-adapted = adapter.adapt(action)  # 不报错即可
-```
+- PushT raw pipeline 不受破坏
+- Normalized stats 计算成功
+- Generic inspect 支持 PushT
+- ALOHA / LIBERO inspect 成功或给出清晰原因
+- 默认 pytest 不依赖网络
 
 ---
 

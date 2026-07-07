@@ -1,0 +1,21 @@
+name: mini-vla-robot
+channels:
+  - conda-forge
+  - pytorch
+  - defaults
+
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - pillow
+  - pyyaml
+  - pytest
+  - pip:
+      - torch
+      - torchvision
+      - lerobot
+      - datasets
+      - huggingface_hub
+      - av
+      - jsonlines
