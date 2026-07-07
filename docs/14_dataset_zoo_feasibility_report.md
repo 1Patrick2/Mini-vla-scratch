@@ -40,11 +40,11 @@ Training (3 epochs, normalized space):
   Epoch 3/3  loss=0.044  mae=0.159
 
 Evaluation (128 samples, heldout=0.2, raw action space):
-  raw_action MAE:  6.891
-  zero_action MAE: 205.460  (Y model beats baseline)
-  mean_action MAE: 17.848   (Y model beats baseline)
-  previous MAE:    205.820  (Y model beats baseline)
-  CosSim:  0.9998
+  raw_action MAE:  6.25
+  zero_action MAE: 205.46  (Y model beats baseline)
+  mean_action MAE: 93.35   (Y model beats baseline, train split)
+  previous MAE:    9.10    (Y model beats baseline, raw space)
+  CosSim:  1.0000
   Finite:  1.0000
 ```
 
