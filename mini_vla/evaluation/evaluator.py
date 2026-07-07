@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 import torch
 
@@ -28,15 +28,25 @@ def evaluate_policy_on_dataset(
     action_dim: int = 2,
     max_samples: int = 0,
     include_baselines: bool = True,
+    baseline_dataset: Optional[Sequence[Dict[str, Any]]] = None,
+    mean_action: Optional[torch.Tensor] = None,
+    sort_by_episode_frame: bool = True,
 ) -> Dict[str, Any]:
     """Evaluate a policy on a dataset and compare against baselines.
 
     Args:
         policy: Object with ``predict(sample) -> Tensor[action_dim]``.
-        dataset: List of sample dicts containing ``action`` key.
+        dataset: Sequence of sample dicts containing ``action`` key.
         action_dim: Dimensionality of the action space.
         max_samples: If > 0, limit evaluation to this many samples.
         include_baselines: Whether to compute and include baseline metrics.
+        baseline_dataset: Optional separate dataset for computing mean baseline
+            (e.g. training set), to avoid data leakage.
+        mean_action: Pre-computed mean action tensor.  Takes precedence over
+            ``baseline_dataset``.
+        sort_by_episode_frame: If True, sort pool by ``episode_index`` and
+            ``frame_index`` before evaluation, so that
+            ``PreviousActionBaseline`` behaves correctly.
 
     Returns:
         A serialisable report dict with keys:
@@ -45,10 +55,26 @@ def evaluate_policy_on_dataset(
         - model: dict of metric values
         - baselines (optional): dict of baseline_name -> metric values
         - per_dim_mae: list of per-dimension MAE for the model
+        - mean_action_source: string describing where mean came from
     """
-    pool = dataset
-    if max_samples > 0:
-        pool = dataset[:max_samples]
+    # Build pool via explicit index iteration (avoids slicing bug with
+    # adapters that don't support ``__getitem__`` with slices).
+    n = len(dataset) if max_samples <= 0 else min(max_samples, len(dataset))
+    pool = [dataset[i] for i in range(n)]
+
+    if not pool:
+        return {"num_samples": 0, "action_dim": action_dim}
+
+    # Sort by (episode_index, frame_index) so PreviousActionBaseline
+    # behaves correctly
+    if sort_by_episode_frame:
+        pool = sorted(
+            pool,
+            key=lambda s: (
+                s.get("episode_index", -1),
+                s.get("frame_index", -1),
+            ),
+        )
 
     # Collect model predictions
     model_preds: List[torch.Tensor] = []
@@ -82,11 +108,24 @@ def evaluate_policy_on_dataset(
         zero_preds = torch.stack([zero.predict(s) for s in pool])
         baselines_report["zero_action"] = _compute_metrics(zero_preds, targets_t)
 
-        # MeanAction
-        mean_act = compute_mean_action(pool)
-        mean = MeanActionBaseline(mean_act)
+        # MeanAction — avoid data leakage
+        _mean_action_source: str
+        if mean_action is not None:
+            _mean_act = mean_action
+            _mean_action_source = "provided"
+        elif baseline_dataset is not None:
+            _mean_act = compute_mean_action(
+                [baseline_dataset[i] for i in range(min(len(baseline_dataset), 5000))]
+            )
+            _mean_action_source = "baseline_dataset"
+        else:
+            _mean_act = compute_mean_action(pool)
+            _mean_action_source = "eval_pool"
+        mean = MeanActionBaseline(_mean_act)
         mean_preds = torch.stack([mean.predict() for _ in pool])
         baselines_report["mean_action"] = _compute_metrics(mean_preds, targets_t)
+        baselines_report["mean_action_source"] = _mean_action_source
+        report["mean_action_source"] = _mean_action_source
 
         # PreviousAction
         prev = PreviousActionBaseline(action_dim)
@@ -106,4 +145,5 @@ def _compute_metrics(preds: torch.Tensor, targets: torch.Tensor) -> Dict[str, fl
         "rmse": rmse(preds, targets),
         "cosine_similarity": cosine_similarity(preds, targets),
         "finite_ratio": finite_ratio(preds),
+        "clip_rate": None,  # reserved — raw vs clipped comparison not yet wired
     }

@@ -49,11 +49,29 @@ def build_dataset(
 
 
 def _load_pusht_remote(data_cfg: Dict[str, Any]) -> list[dict]:
-    """Load PushT samples from Hugging Face datasets (optional dependency).
+    """Load PushT samples from Hugging Face datasets or local LeRobot format.
 
     Raises:
-        ImportError: If ``datasets`` is not installed.
+        ImportError: If required dependencies are not installed.
     """
+    local_root = data_cfg.get("local_root")
+    repo_id = data_cfg.get("repo_id", "lerobot/pusht")
+    max_samples = data_cfg.get("max_samples", 0)
+
+    # Local LeRobot format
+    if local_root:
+        try:
+            from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
+            ds = LeRobotDataset(repo_id, root=local_root)
+            n = max_samples if max_samples > 0 else len(ds)
+            return [ds[i] for i in range(min(n, len(ds)))]
+        except ImportError:
+            raise ImportError(
+                "Local LeRobot dataset loading requires 'lerobot'. "
+                "Install it with: pip install lerobot"
+            ) from None
+
+    # Remote via Hugging Face datasets
     try:
         from datasets import load_dataset
     except ImportError:
@@ -62,8 +80,6 @@ def _load_pusht_remote(data_cfg: Dict[str, Any]) -> list[dict]:
             "Install it with: pip install datasets"
         ) from None
 
-    repo_id = data_cfg.get("repo_id", "lerobot/pusht")
-    max_samples = data_cfg.get("max_samples", 0)
     hf_ds = load_dataset(repo_id, split="train", streaming=True)
     samples = []
     for i, row in enumerate(hf_ds):

@@ -87,6 +87,24 @@ class TestEvaluatePushTCLI:
         result = self._run()
         assert result.returncode == 0, f"stderr: {result.stderr}"
 
+    def test_cli_with_mock_data(self):
+        """CLI generates report.json via subprocess using --mock-data."""
+        result = self._run("--mock-data")
+        assert result.returncode == 0, f"stderr: {result.stderr}"
+        assert self.report_path.exists(), "Report JSON should exist"
+        import json
+        report = json.loads(self.report_path.read_text())
+        assert "model" in report
+        assert "baselines" in report
+        assert "MAE" in result.stdout
+        assert "Report saved" in result.stdout
+
+    def test_cli_with_heldout_split(self):
+        """CLI with --heldout-ratio runs without error."""
+        result = self._run("--mock-data", "--heldout-ratio", "0.2")
+        assert result.returncode == 0, f"stderr: {result.stderr}"
+        assert self.report_path.exists()
+
     def test_evaluate_on_mock_dataset(self, tmp_path):
         """evaluate_policy_on_dataset works with mock PushT samples."""
         raw_samples = [

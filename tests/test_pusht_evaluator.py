@@ -71,6 +71,8 @@ class TestEvaluatePolicyOnDataset:
 
         model_mae = report["model"]["mae"]
         for name, bm in report["baselines"].items():
+            if not isinstance(bm, dict) or "mae" not in bm:
+                continue
             assert model_mae <= bm["mae"], (
                 f"Perfect policy MAE {model_mae} > {name} MAE {bm['mae']}"
             )
