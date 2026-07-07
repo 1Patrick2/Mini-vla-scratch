@@ -18,6 +18,43 @@ _IMAGE_KEY_CANDIDATES = [
 ]
 
 
+def _import_lerobot_dataset():
+    """Import ``LeRobotDataset`` across known lerobot version paths.
+
+    Tries, in order:
+    1. ``lerobot.datasets.lerobot_dataset.LeRobotDataset``  (v0.4+)
+    2. ``lerobot.common.datasets.lerobot_dataset.LeRobotDataset``  (older)
+
+    Returns:
+        The ``LeRobotDataset`` class.
+
+    Raises:
+        ImportError: If none of the known paths work.
+    """
+    errors: List[str] = []
+
+    # Path 1 — lerobot v0.4+
+    try:
+        from lerobot.datasets.lerobot_dataset import LeRobotDataset
+        return LeRobotDataset
+    except Exception as e:
+        errors.append(f"  lerobot.datasets.lerobot_dataset  ->  {type(e).__name__}: {e}")
+
+    # Path 2 — older lerobot
+    try:
+        from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
+        return LeRobotDataset
+    except Exception as e:
+        errors.append(f"  lerobot.common.datasets.lerobot_dataset  ->  {type(e).__name__}: {e}")
+
+    raise ImportError(
+        "Could not import LeRobotDataset from any known path.\n"
+        "Install or reinstall lerobot:\n"
+        "  pip install lerobot\n\n"
+        "Tried paths:\n" + "\n".join(errors)
+    )
+
+
 def load_pusht_lerobot(
     repo_id: str = "lerobot/pusht",
     root: Optional[str] = None,
@@ -32,20 +69,15 @@ def load_pusht_lerobot(
 
     Returns:
         List of sample dicts.  Each sample contains ``observation.image``
-        (numpy uint8 array, shape ``[96, 96, 3]``), ``observation.state``,
+        (torch.Tensor, shape ``[3, 96, 96]``), ``observation.state``,
         and ``action``, plus metadata keys.
 
     Raises:
-        ImportError: If ``lerobot`` is not installed.
+        ImportError: If ``lerobot`` is not installed or LeRobotDataset
+            cannot be imported from any known path.
         KeyError: If no usable image key is found in the first sample.
     """
-    try:
-        from lerobot.datasets import LeRobotDataset
-    except ImportError:
-        raise ImportError(
-            "Real PushT vision loading requires 'lerobot'. "
-            "Install it with: pip install lerobot"
-        ) from None
+    LeRobotDataset = _import_lerobot_dataset()
 
     if root:
         ds = LeRobotDataset(repo_id, root=root)
