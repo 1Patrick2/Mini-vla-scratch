@@ -151,8 +151,17 @@ def evaluate_samples_with_predictor(
     samples: List[Dict[str, Any]],
     predictor: Any,
     normalizer: Optional[ActionNormalizer] = None,
+    train_samples_for_baseline: Optional[List[Dict[str, Any]]] = None,
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """Evaluate a predictor on samples and return metrics + predictions list.
+
+    Args:
+        samples: Evaluation samples.
+        predictor: Object with ``predict(sample) -> Tensor``.
+        normalizer: Optional normalizer for action views.
+        train_samples_for_baseline: Training samples used to compute the
+            mean baseline action.  If None, uses ``samples`` (eval pool),
+            but this may cause slight data leakage.
 
     Returns:
         ``(report_metrics, predictions_jsonl)``.
@@ -208,7 +217,9 @@ def evaluate_samples_with_predictor(
     bs = report_metrics.setdefault("baselines", {})
     bs["zero_action"] = _compute_metrics(zero_preds, gt_raw_t)
 
-    mean_act = _compute_mean_raw_action(samples)
+    # Mean baseline — use train samples to avoid data leakage
+    baseline_source = train_samples_for_baseline or samples
+    mean_act = _compute_mean_raw_action(baseline_source)
     mean_preds = torch.stack([MeanActionBaseline(mean_act).predict() for _ in samples])
     report_metrics["baselines"]["mean_action"] = _compute_metrics(mean_preds, gt_raw_t)
 
@@ -265,7 +276,9 @@ def main() -> None:
             normalizer = ActionNormalizer(stats)
 
     report_metrics, predictions = evaluate_samples_with_predictor(
-        pool, predictor, normalizer=normalizer,
+        pool, predictor,
+        normalizer=normalizer,
+        train_samples_for_baseline=train_samples,
     )
 
     # Build full report

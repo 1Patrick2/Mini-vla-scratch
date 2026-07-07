@@ -58,8 +58,10 @@ class PreviousActionBaseline:
         else:
             result = torch.zeros(self.action_dim)
         # Store ground-truth action for the next frame
-        if "action" in sample:
-            self._prev = sample["action"].clone().detach().cpu()
+        # Prefer action_raw (un-normalised) when available
+        gt_action = sample.get("action_raw", sample.get("action"))
+        if gt_action is not None:
+            self._prev = gt_action.clone().detach().cpu()
         self._prev_episode = episode
         return result
 
