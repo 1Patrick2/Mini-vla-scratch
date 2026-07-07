@@ -51,6 +51,9 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Disable action clipping.")
     parser.add_argument("--action-limit", type=float, default=0.05,
                         help="Action clip limit (default 0.05).")
+    parser.add_argument("--loader", default=None,
+                        choices=["lerobot", "hf_datasets"],
+                        help="Data loader backend (default from config).")
     parser.add_argument("--heldout-ratio", type=float, default=0.0,
                         help="Fraction of episodes to hold out (default 0 = all).")
     parser.add_argument("--mock-data", action="store_true",
@@ -126,6 +129,8 @@ def main() -> None:
             data_cfg["repo_id"] = args.repo_id
         if args.local_root:
             data_cfg["local_root"] = args.local_root
+        if args.loader:
+            data_cfg["loader"] = args.loader
         dataset = build_dataset(data_cfg)
 
         predictor = Predictor(
@@ -171,6 +176,17 @@ def main() -> None:
                 continue
             beats = "Y" if bm["mae"] > m["mae"] else "N"
             print(f"  {name:20s}  MAE={bm['mae']:.6f}  ({beats} model beats baseline)")
+
+    # Add dataset metadata to report
+    report["dataset"] = {
+        "dataset_type": "pusht",
+        "loader": config["data"].get("loader", "lerobot"),
+        "mode": "vision",
+        "has_image": True,
+        "max_samples": args.max_samples,
+        "heldout_ratio": args.heldout_ratio,
+        "mean_action_source": report.get("mean_action_source"),
+    }
 
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)

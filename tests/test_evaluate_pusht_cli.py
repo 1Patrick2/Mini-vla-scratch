@@ -1,6 +1,8 @@
 """Tests for the evaluate_pusht CLI via subprocess."""
 
+import importlib.util
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -12,6 +14,9 @@ import torch
 from mini_vla.datasets.pusht_adapter import PushTDatasetAdapter
 from mini_vla.evaluation.evaluator import evaluate_policy_on_dataset
 from mini_vla.inference.predictor import Predictor
+
+RUN_REAL_PUSHT = os.getenv("RUN_REAL_PUSHT") == "1"
+HAS_LEROBOT = importlib.util.find_spec("lerobot") is not None
 
 
 def _train_and_save_checkpoint(tmp_path):
@@ -81,11 +86,27 @@ class TestEvaluatePushTCLI:
         ]
         return subprocess.run(cmd, capture_output=True, text=True, cwd=Path.cwd())
 
-    @pytest.mark.skipif(True, reason="Requires remote PushT dataset dependency")
+    @pytest.mark.realdata
+    @pytest.mark.skipif(
+        not RUN_REAL_PUSHT or not HAS_LEROBOT,
+        reason="Set RUN_REAL_PUSHT=1 and install lerobot to run real PushT vision test.",
+    )
     def test_cli_with_remote_pusht(self):
-        """CLI runs with real remote PushT (requires datasets + network)."""
-        result = self._run()
+        """CLI runs with real remote PushT (requires lerobot + network)."""
+        result = self._run(
+            "--repo-id", "lerobot/pusht",
+            "--loader", "lerobot",
+            "--max-samples", "8",
+            "--heldout-ratio", "0.25",
+            "--no-clip-action",
+        )
         assert result.returncode == 0, f"stderr: {result.stderr}"
+        assert self.report_path.exists()
+        report = json.loads(self.report_path.read_text())
+        assert report["dataset"]["mode"] == "vision"
+        assert report["dataset"]["has_image"] is True
+        assert "model" in report
+        assert "baselines" in report
 
     def test_cli_with_mock_data(self):
         """CLI generates report.json via subprocess using --mock-data."""

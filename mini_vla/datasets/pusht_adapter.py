@@ -7,7 +7,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 import torch
@@ -15,6 +15,13 @@ from PIL import Image
 
 from mini_vla.datasets.pusht_inspection import DEFAULT_PUSHT_KEYS
 from mini_vla.datasets.transforms import build_attention_mask, tokenize
+
+_IMAGE_KEY_CANDIDATES = [
+    "observation.image",
+    "observation.images.top",
+    "observation.images.main",
+    "image",
+]
 
 
 def _get_by_key(sample: Dict[str, Any], key: str) -> Any:
@@ -118,7 +125,10 @@ class PushTDatasetAdapter:
 
     Args:
         base_dataset: A list, list-like, or sequence of PushT sample dicts.
-        image_key: Key for the image in the PushT sample.
+        image_key: Key for the image in the PushT sample (default
+            ``observation.image``).
+        image_keys: Optional list of candidate image keys tried in order.
+            If provided, takes precedence over ``image_key``.
         state_key: Key for the state.
         action_key: Key for the action.
         image_size: Target image size (default 64).
@@ -137,6 +147,7 @@ class PushTDatasetAdapter:
         self,
         base_dataset: Sequence[Dict[str, Any]],
         image_key: str = DEFAULT_PUSHT_KEYS["image_key"],
+        image_keys: Optional[List[str]] = None,
         state_key: str = DEFAULT_PUSHT_KEYS["state_key"],
         action_key: str = DEFAULT_PUSHT_KEYS["action_key"],
         image_size: int = 64,
@@ -151,6 +162,7 @@ class PushTDatasetAdapter:
     ) -> None:
         self.base_dataset = base_dataset
         self.image_key = image_key
+        self.image_keys = image_keys
         self.state_key = state_key
         self.action_key = action_key
         self.image_size = image_size
@@ -163,6 +175,25 @@ class PushTDatasetAdapter:
         self.done_key = done_key
         self.success_key = success_key
 
+    def _find_image_key(self, raw: Dict[str, Any]) -> str:
+        """Return the first available image key in ``raw``.
+
+        Tries ``self.image_keys`` first, then falls back to
+        ``self.image_key``.  Raises ``KeyError`` if none match.
+        """
+        candidates = self.image_keys or [self.image_key]
+        for key in candidates:
+            try:
+                _get_by_key(raw, key)
+                return key
+            except KeyError:
+                continue
+        raise KeyError(
+            f"No usable image key found in sample. "
+            f"Candidates: {candidates}. "
+            f"Available keys: {list(raw.keys())}"
+        )
+
     def __len__(self) -> int:
         return len(self.base_dataset)
 
@@ -170,7 +201,8 @@ class PushTDatasetAdapter:
         raw = self.base_dataset[index]
 
         # ── Image ──────────────────────────────────────────────────
-        img_data = _get_by_key(raw, self.image_key)
+        img_key = self._find_image_key(raw)
+        img_data = _get_by_key(raw, img_key)
         image = _process_image(img_data, image_size=self.image_size)
 
         # ── Instruction ─────────────────────────────────────────────

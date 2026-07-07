@@ -27,6 +27,9 @@ ignore = []
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-q"
+markers = [
+    "realdata: tests requiring real external datasets, network, or optional dependencies",
+]
 
 [tool.mypy]
 python_version = "3.10"

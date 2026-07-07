@@ -2,6 +2,7 @@ base: ../base.yaml
 
 data:
   dataset_type: pusht
+  loader: lerobot
   repo_id: lerobot/pusht
   image_key: observation.image
   state_key: observation.state
