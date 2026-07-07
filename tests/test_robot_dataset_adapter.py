@@ -119,3 +119,49 @@ class TestBaseRobotDatasetAdapter:
         # Action was normalized: (7-5)/2 = 1.0, (9-5)/2 = 2.0
         expected_action = torch.tensor([1.0, 2.0])
         assert torch.allclose(out["action"], expected_action, atol=1e-5)
+
+
+class TestRawNormalizedDualFields:
+    def test_normalizer_enabled_has_both_fields(self):
+        stats = NormalizationStats(
+            state_mean=torch.zeros(2), state_std=torch.ones(2),
+            action_mean=torch.ones(2) * 5, action_std=torch.ones(2) * 2,
+        )
+        normalizer = ActionNormalizer(stats)
+        sample = {
+            "observation.image": np.zeros((96, 96, 3), dtype=np.uint8),
+            "observation.state": np.array([1.0, 2.0], dtype=np.float32),
+            "action": np.array([7.0, 9.0], dtype=np.float32),
+        }
+        adapter = BaseRobotDatasetAdapter([sample], _PUSHT_SPEC, normalizer=normalizer)
+        out = adapter[0]
+
+        # Must have both raw and normalized fields
+        assert "state_raw" in out
+        assert "action_raw" in out
+        assert "state_normalized" in out
+        assert "action_normalized" in out
+
+        # action == action_normalized (training space)
+        assert torch.allclose(out["action"], out["action_normalized"])
+        # action != action_raw (normalized vs raw)
+        assert not torch.allclose(out["action"], out["action_raw"])
+        # action_raw is original
+        assert torch.allclose(out["action_raw"], torch.tensor([7.0, 9.0]))
+
+    def test_normalizer_disabled_no_normalized_fields(self):
+        sample = {
+            "observation.image": np.zeros((96, 96, 3), dtype=np.uint8),
+            "observation.state": np.array([1.0, 2.0], dtype=np.float32),
+            "action": np.array([7.0, 9.0], dtype=np.float32),
+        }
+        adapter = BaseRobotDatasetAdapter([sample], _PUSHT_SPEC, normalizer=None)
+        out = adapter[0]
+
+        assert "state_raw" in out
+        assert "action_raw" in out
+        assert "state_normalized" not in out
+        assert "action_normalized" not in out
+
+        # Without normalization, action == action_raw
+        assert torch.allclose(out["action"], out["action_raw"])

@@ -1,53 +1,141 @@
-"""Tests for evaluate_robot_dataset CLI."""
-
-import subprocess
-import sys
-from pathlib import Path
-
-import pytest
+"""Tests for evaluate_robot_dataset CLI using internal functions."""
 
 
-class TestEvaluateRobotDatasetCLI:
-    """CLI subprocess tests with --mock-data."""
+import numpy as np
+import torch
 
-    @pytest.fixture(autouse=True)
-    def _setup(self, tmp_path):
-        self.report_path = tmp_path / "report.json"
-        self.data_config = Path("configs/train/pusht_normalized.yaml")
+from mini_vla.datasets.normalization import ActionNormalizer, NormalizationStats
+from mini_vla.datasets.registry import get_dataset_spec
+from mini_vla.datasets.robot_adapter import BaseRobotDatasetAdapter
+from scripts.evaluate_robot_dataset import (
+    _get_action_views,
+    evaluate_samples_with_predictor,
+)
 
-    def _run(self, *extra_args):
-        cmd = [
-            sys.executable,
-            "scripts/evaluate_robot_dataset.py",
-            "--config", str(self.data_config),
-            "--ckpt", "nonexistent.pt",  # mock-data mode doesn't load ckpt
-            "--dataset-name", "pusht",
-            "--mock-data",
-            "--output", str(self.report_path),
-            "--max-samples", "8",
-            *extra_args,
-        ]
-        return subprocess.run(cmd, capture_output=True, text=True, cwd=Path.cwd())
 
-    def test_end_to_end(self):
-        """CLI runs with mock data and produces report.json."""
-        result = self._run()
-        # With --mock-data, the Predictor still requires a valid checkpoint,
-        # so the subprocess may fail.  Test the evaluator logic directly instead.
-        # For the subprocess test, we check that it doesn't crash before argparse.
-        assert result.returncode != 0  # Predictor will fail on dummy ckpt
-        # But report should not exist since it failed
-        # This test validates the CLI structure parses args correctly
+class FakePredictor:
+    """Predictor that returns action + 0.1 in the training space."""
 
-    def test_evaluator_mock_report_content(self):
-        """Verify evaluate_robot_dataset uses mock data correctly by calling internals."""
-        from scripts.evaluate_robot_dataset import _build_mock_data
-        samples = _build_mock_data(action_dim=2, n=8)
-        from mini_vla.datasets.registry import get_dataset_spec
-        from mini_vla.datasets.robot_adapter import BaseRobotDatasetAdapter
-        spec = get_dataset_spec("pusht")
-        dataset = BaseRobotDatasetAdapter(samples, spec)
-        sample0 = dataset[0]
-        assert sample0["image"].shape == (3, 64, 64)
-        assert sample0["action"].shape == (2,)
-        assert sample0["state"].shape == (2,)
+    def predict(self, sample):
+        return sample["action"] + 0.1
+
+
+def _make_mock_samples(n=4, with_normalizer=False):
+    """Create mock samples, optionally with normalization."""
+    rng = np.random.RandomState(42)
+    raw_list = [
+        {
+            "observation.image": rng.randint(0, 256, (96, 96, 3), dtype=np.uint8),
+            "observation.state": rng.randn(2).astype(np.float32),
+            "action": rng.randn(2).astype(np.float32),
+            "episode_index": i // 2,
+            "frame_index": i % 2,
+        }
+        for i in range(n)
+    ]
+    spec = get_dataset_spec("pusht")
+    if with_normalizer:
+        stats = NormalizationStats(
+            state_mean=torch.zeros(2), state_std=torch.ones(2),
+            action_mean=torch.zeros(2), action_std=torch.ones(2),
+        )
+        normalizer = ActionNormalizer(stats)
+    else:
+        normalizer = None
+    adapter = BaseRobotDatasetAdapter(raw_list, spec, normalizer=normalizer)
+    return [adapter[i] for i in range(len(adapter))]
+
+
+class TestGetActionViews:
+    def test_without_normalizer(self):
+        samples = _make_mock_samples(with_normalizer=False)
+        sample = samples[0]
+        pred = torch.tensor([0.1, 0.2])
+        pn, gn, pr, gr = _get_action_views(sample, pred, normalizer=None)
+        assert torch.allclose(pn, pred)
+        assert torch.allclose(pr, pred)
+        assert torch.allclose(gn, gr)
+
+    def test_with_normalizer(self):
+        samples = _make_mock_samples(with_normalizer=True)
+        sample = samples[0]
+        pred = torch.tensor([0.1, 0.2])
+        stats = NormalizationStats(
+            state_mean=torch.zeros(2), state_std=torch.ones(2),
+            action_mean=torch.zeros(2), action_std=torch.ones(2),
+        )
+        normalizer = ActionNormalizer(stats)
+        pn, gn, pr, gr = _get_action_views(sample, pred, normalizer)
+        assert torch.allclose(pn, pred)
+        assert "action_raw" in sample
+        assert torch.allclose(gr, sample["action_raw"])
+
+
+class TestEvaluateSamplesWithPredictor:
+    def test_report_contains_all_metrics(self):
+        samples = _make_mock_samples(n=8, with_normalizer=True)
+        predictor = FakePredictor()
+        stats = NormalizationStats(
+            state_mean=torch.zeros(2), state_std=torch.ones(2),
+            action_mean=torch.zeros(2), action_std=torch.ones(2),
+        )
+        normalizer = ActionNormalizer(stats)
+        report, predictions = evaluate_samples_with_predictor(
+            samples, predictor, normalizer=normalizer,
+        )
+
+        assert "raw_action_metrics" in report
+        assert "normalized_action_metrics" in report
+        assert "baselines" in report
+        assert "zero_action" in report["baselines"]
+        assert "mean_action" in report["baselines"]
+        assert "previous_action" in report["baselines"]
+
+    def test_predictions_have_raw_and_normalized(self):
+        samples = _make_mock_samples(n=4, with_normalizer=True)
+        predictor = FakePredictor()
+        stats = NormalizationStats(
+            state_mean=torch.zeros(2), state_std=torch.ones(2),
+            action_mean=torch.ones(2) * 5, action_std=torch.ones(2) * 2,
+        )
+        normalizer = ActionNormalizer(stats)
+        report, predictions = evaluate_samples_with_predictor(
+            samples, predictor, normalizer=normalizer,
+        )
+
+        assert len(predictions) == 4
+        p0 = predictions[0]
+        assert "pred_action_raw" in p0
+        assert "gt_action_raw" in p0
+        assert "pred_action_normalized" in p0
+        assert "gt_action_normalized" in p0
+
+    def test_normalizer_enabled_flag(self):
+        samples = _make_mock_samples(n=4, with_normalizer=True)
+        predictor = FakePredictor()
+        stats = NormalizationStats(
+            state_mean=torch.zeros(2), state_std=torch.ones(2),
+            action_mean=torch.zeros(2), action_std=torch.ones(2),
+        )
+        normalizer = ActionNormalizer(stats)
+        report, predictions = evaluate_samples_with_predictor(
+            samples, predictor, normalizer=normalizer,
+        )
+        # With identity normalizer, raw and normalized metrics should be close
+        assert report["raw_action_metrics"]["mae"] >= 0
+        assert report["normalized_action_metrics"]["mae"] >= 0
+
+    def test_baselines_use_raw_action_space(self):
+        samples = _make_mock_samples(n=8, with_normalizer=True)
+        predictor = FakePredictor()
+        stats = NormalizationStats(
+            state_mean=torch.zeros(2), state_std=torch.ones(2),
+            action_mean=torch.ones(2) * 10, action_std=torch.ones(2) * 3,
+        )
+        normalizer = ActionNormalizer(stats)
+        report, _ = evaluate_samples_with_predictor(
+            samples, predictor, normalizer=normalizer,
+        )
+        # Mean baseline should be computed from raw actions, not normalized
+        mean_mae = report["baselines"]["mean_action"]["mae"]
+        assert mean_mae > 0

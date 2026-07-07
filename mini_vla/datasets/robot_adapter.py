@@ -147,9 +147,9 @@ class BaseRobotDatasetAdapter:
                     f"No state key found among {self.spec.state_keys}. "
                     f"Available keys: {list(raw.keys())}"
                 )
-            state = torch.zeros(2, dtype=torch.float32)
+            state_raw = torch.zeros(2, dtype=torch.float32)
         else:
-            state = torch.as_tensor(
+            state_raw = torch.as_tensor(
                 get_by_key(raw, state_key), dtype=torch.float32,
             )
 
@@ -162,26 +162,40 @@ class BaseRobotDatasetAdapter:
                     f"Available keys: {list(raw.keys())}. "
                     "Action is required for BC training."
                 )
-            action = torch.zeros(2, dtype=torch.float32)
+            action_raw = torch.zeros(2, dtype=torch.float32)
         else:
-            action = torch.as_tensor(
+            action_raw = torch.as_tensor(
                 get_by_key(raw, action_key), dtype=torch.float32,
             )
 
         # ── Normalize ──────────────────────────────────────────────
-        if self.normalizer:
-            state = self.normalizer.normalize_state(state)
-            action = self.normalizer.normalize_action(action)
-
-        # ── Sample ─────────────────────────────────────────────────
+        # Convention:
+        #   sample["state"] / sample["action"] = the training space
+        #   sample["state_raw"] / sample["action_raw"] = always raw
+        #   If normalizer exists:
+        #     state/action = normalized
+        #     state_normalized/action_normalized also available
         sample: Dict[str, Any] = {
             "image": image,
             "input_ids": input_ids,
             "attention_mask": attention_mask,
-            "state": state,
-            "action": action,
-            "instruction": instr,
+            "state_raw": state_raw,
+            "action_raw": action_raw,
         }
+
+        if self.normalizer:
+            state_norm = self.normalizer.normalize_state(state_raw)
+            action_norm = self.normalizer.normalize_action(action_raw)
+            sample["state"] = state_norm
+            sample["action"] = action_norm
+            sample["state_normalized"] = state_norm
+            sample["action_normalized"] = action_norm
+        else:
+            sample["state"] = state_raw
+            sample["action"] = action_raw
+
+        # ── Instruction ─────────────────────────────────────────────
+        sample["instruction"] = instr
 
         # ── Metadata ───────────────────────────────────────────────
         ep_key = self.spec.episode_index_key

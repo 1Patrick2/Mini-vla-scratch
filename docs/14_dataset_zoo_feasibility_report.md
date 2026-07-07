@@ -5,8 +5,8 @@
 | Dataset | Repo ID | Inspect | Train support | Eval support | Notes |
 |---------|---------|---------|---------------|--------------|-------|
 | PushT | `lerobot/pusht` | ✅ | ✅ | ✅ | Full pipeline (raw + normalized) |
-| ALOHA sim transfer cube | `lerobot/aloha_sim_transfer_cube_scripted` | ⏳ | inspect only | inspect only | Pending real-data inspect |
-| LIBERO | `lerobot/libero` | ⏳ | feasibility only | feasibility only | Pending real-data inspect |
+| ALOHA sim transfer cube | `lerobot/aloha_sim_transfer_cube_scripted` | ✅ | inspect only | inspect only | `action_dim=14`, needs config override |
+| LIBERO | `lerobot/libero` | ❌ remote SSL error | feasibility only | feasibility only | Remote download blocked in current env |
 
 ---
 
@@ -24,6 +24,29 @@
 | Normalization | ✅ Stats computed, normalized train/eval pipeline works |
 | Config | `configs/train/pusht_debug.yaml` (raw), `configs/train/pusht_normalized.yaml` (norm) |
 | Inference | `scripts/evaluate_pusht.py`, `scripts/evaluate_robot_dataset.py` |
+
+### PushT normalized validation results
+
+```text
+Stats (512 samples):
+  state_mean: [206.49, 276.25]
+  state_std:  [99.80, 93.63]
+  action_mean: [206.53, 278.75]
+  action_std:  [99.51, 92.39]
+
+Training (3 epochs, normalized space):
+  Epoch 1/3  loss=0.216  mae=0.309
+  Epoch 2/3  loss=0.052  mae=0.176
+  Epoch 3/3  loss=0.044  mae=0.159
+
+Evaluation (128 samples, heldout=0.2, raw action space):
+  raw_action MAE:  6.891
+  zero_action MAE: 205.460  (Y model beats baseline)
+  mean_action MAE: 17.848   (Y model beats baseline)
+  previous MAE:    205.820  (Y model beats baseline)
+  CosSim:  0.9998
+  Finite:  1.0000
+```
 
 ### PushT raw pipeline (Stage 5)
 
@@ -56,18 +79,27 @@ python scripts/evaluate_robot_dataset.py \
 
 | Field | Value |
 |-------|-------|
-| Status | ⏳ Pending inspect |
+| Status | ✅ Inspect passed |
 | Repo ID | `lerobot/aloha_sim_transfer_cube_scripted` |
-| Train support | ❌ (Stage 6 inspect only) |
+| Train support | ❌ (Stage 6 inspect only — `action_dim=14` != MiniVLA default) |
 | Eval support | ❌ (Stage 6 inspect only) |
+| matched_image_key | `observation.images.top` |
+| matched_state_key | `observation.state` |
+| matched_action_key | `action` |
+| image_shape | `[3, 480, 640]` |
+| state_shape | `[14]` |
+| action_shape | `[14]` |
+| has_language | ✅ (`task` key available) |
 
-### Known challenges (estimated)
+### Known challenges
 
-- Action dim may differ from MiniVLA default `action_dim=2`
-- State keys may include `observation.qpos` (joint positions)
-- Multi-camera fields (`observation.images.top`, `observation.images.cam_high`) require camera selection policy
-- Default `max_text_len=16` may be insufficient; ALOHA instructions may be longer
-- `strict: false` recommended for initial inspect
+- `action_dim=14`, `state_dim=14` — MiniVLA defaults to `action_dim=2`.
+  Config override needed for training.
+- Image is `[3, 480, 640]` (much larger than PushT's 96×96).
+  Resize to 64×64 handled by adapter, but crops information.
+- Multi-camera: only `observation.images.top` was matched; camera
+  selection policy needed for multi-camera datasets.
+- Full training deferred to Stage 7+.
 
 ---
 
@@ -75,20 +107,21 @@ python scripts/evaluate_robot_dataset.py \
 
 | Field | Value |
 |-------|-------|
-| Status | ⏳ Pending inspect |
+| Status | ❌ Remote inspect failed (SSL error) |
 | Repo ID | `lerobot/libero` |
-| Train support | ❌ (Stage 6 feasibility only) |
-| Eval support | ❌ (Stage 6 feasibility only) |
+| Train support | ❌ (feasibility only) |
+| Eval support | ❌ (feasibility only) |
+| Mock inspect | ✅ Schema report from mock data available |
 
-### Known challenges (estimated)
+### Known challenges
 
-- LIBERO has 4 task suites, 130 tasks — much larger than PushT
-- Multi-task language instructions may be complex
-- Multi-camera fields: `observation.images.agentview`, `observation.images.eye_in_hand`
-- Higher state/action dimensionality possible
-- `max_text_len=32` recommended (config already set)
-- Very large download size — expect slower first load
-- Requires `lerobot` optional dependency
+- Remote download failed due to SSL error (`UNEXPECTED_EOF_WHILE_READING`).
+  May be intermittent or require VPN/proxy.
+- Large dataset (130 tasks × 4 suites) — download size is significant.
+- Multi-camera fields expected: `observation.images.agentview`,
+  `observation.images.eye_in_hand`.
+- Multi-task language instructions may be complex.
+- Full training deferred to Stage 7+.
 
 ---
 

@@ -13,7 +13,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -30,7 +30,6 @@ from mini_vla.evaluation.baselines import (
     MeanActionBaseline,
     PreviousActionBaseline,
     ZeroActionBaseline,
-    compute_mean_action,
 )
 
 
@@ -108,6 +107,118 @@ def _compute_metrics(preds: torch.Tensor, targets: torch.Tensor) -> Dict[str, fl
     }
 
 
+def _raw_action(sample: Dict[str, Any]) -> torch.Tensor:
+    """Get the raw (un-normalised) action from a sample."""
+    if "action_raw" in sample:
+        return sample["action_raw"]
+    return sample["action"]
+
+
+def _get_action_views(
+    sample: Dict[str, Any],
+    pred: torch.Tensor,
+    normalizer: Optional[ActionNormalizer],
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Return ``(pred_norm, gt_norm, pred_raw, gt_raw)`` from a sample.
+
+    ``pred`` is the model output (always in training space = normalized
+    if normalizer is active, raw otherwise).
+    """
+    if normalizer:
+        gt_norm = sample.get("action_normalized", sample["action"])
+        gt_raw = sample.get("action_raw")
+        if gt_raw is None:
+            gt_raw = normalizer.denormalize_action(gt_norm)
+        pred_norm = pred
+        pred_raw = normalizer.denormalize_action(pred_norm)
+    else:
+        gt_raw = sample.get("action_raw", sample["action"])
+        pred_raw = pred
+        pred_norm = pred
+        gt_norm = gt_raw
+    return pred_norm, gt_norm, pred_raw, gt_raw
+
+
+def _compute_mean_raw_action(samples: List[Dict[str, Any]]) -> torch.Tensor:
+    """Compute the mean action in raw space from a list of samples."""
+    actions = [_raw_action(s).clone().detach().cpu() for s in samples]
+    if not actions:
+        return torch.zeros(2)
+    return torch.stack(actions).mean(dim=0)
+
+
+def evaluate_samples_with_predictor(
+    samples: List[Dict[str, Any]],
+    predictor: Any,
+    normalizer: Optional[ActionNormalizer] = None,
+) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+    """Evaluate a predictor on samples and return metrics + predictions list.
+
+    Returns:
+        ``(report_metrics, predictions_jsonl)``.
+    """
+    pred_norm_list: List[torch.Tensor] = []
+    gt_norm_list: List[torch.Tensor] = []
+    pred_raw_list: List[torch.Tensor] = []
+    gt_raw_list: List[torch.Tensor] = []
+    preds_jsonl: List[Dict[str, Any]] = []
+
+    for sample in samples:
+        pred = predictor.predict(sample)
+        pred_norm, gt_norm, pred_raw, gt_raw = _get_action_views(
+            sample, pred, normalizer,
+        )
+
+        pred_norm_list.append(pred_norm.cpu().clone())
+        gt_norm_list.append(gt_norm.cpu().clone())
+        pred_raw_list.append(pred_raw.cpu().clone())
+        gt_raw_list.append(gt_raw.cpu().clone())
+
+        entry: Dict[str, Any] = {
+            "pred_action_raw": pred_raw_list[-1].tolist(),
+            "gt_action_raw": gt_raw_list[-1].tolist(),
+            "pred_action_normalized": pred_norm_list[-1].tolist(),
+            "gt_action_normalized": gt_norm_list[-1].tolist(),
+        }
+        ep = sample.get("episode_index")
+        if ep is not None:
+            entry["episode_index"] = int(ep)
+        fi = sample.get("frame_index")
+        if fi is not None:
+            entry["frame_index"] = int(fi)
+        preds_jsonl.append(entry)
+
+    pred_raw_t = torch.stack(pred_raw_list)
+    gt_raw_t = torch.stack(gt_raw_list)
+    pred_norm_t = torch.stack(pred_norm_list)
+    gt_norm_t = torch.stack(gt_norm_list)
+
+    act_dim = pred_raw_t.shape[-1]
+
+    report_metrics: Dict[str, Any] = {
+        "num_eval_samples": len(samples),
+        "action_dim": act_dim,
+        "raw_action_metrics": _compute_metrics(pred_raw_t, gt_raw_t),
+        "normalized_action_metrics": _compute_metrics(pred_norm_t, gt_norm_t),
+    }
+
+    # Baselines (raw action space)
+    zero = ZeroActionBaseline(act_dim)
+    zero_preds = torch.stack([zero.predict(s) for s in samples])
+    bs = report_metrics.setdefault("baselines", {})
+    bs["zero_action"] = _compute_metrics(zero_preds, gt_raw_t)
+
+    mean_act = _compute_mean_raw_action(samples)
+    mean_preds = torch.stack([MeanActionBaseline(mean_act).predict() for _ in samples])
+    report_metrics["baselines"]["mean_action"] = _compute_metrics(mean_preds, gt_raw_t)
+
+    prev = PreviousActionBaseline(act_dim)
+    prev_preds = torch.stack([prev.predict(s) for s in samples])
+    report_metrics["baselines"]["previous_action"] = _compute_metrics(prev_preds, gt_raw_t)
+
+    return report_metrics, preds_jsonl
+
+
 def main() -> None:
     args = build_parser().parse_args()
     config = load_config(Path(args.config))
@@ -153,55 +264,11 @@ def main() -> None:
             stats = load_stats(stats_path)
             normalizer = ActionNormalizer(stats)
 
-    # Collect predictions
-    pred_norm_list: List[torch.Tensor] = []
-    gt_norm_list: List[torch.Tensor] = []
-    pred_raw_list: List[torch.Tensor] = []
-    gt_raw_list: List[torch.Tensor] = []
-    preds_jsonl: List[Dict[str, Any]] = []
+    report_metrics, predictions = evaluate_samples_with_predictor(
+        pool, predictor, normalizer=normalizer,
+    )
 
-    for sample in pool:
-        pred = predictor.predict(sample)
-        gt = sample["action"]
-        if not isinstance(gt, torch.Tensor):
-            gt = torch.as_tensor(gt)
-
-        # Normalized
-        pred_norm_list.append(pred.cpu().clone())
-        if normalizer:
-            gt_norm = normalizer.normalize_action(gt)
-            gt_norm_list.append(gt_norm.cpu().clone())
-            # Denormalize prediction for raw space
-            pred_raw = normalizer.denormalize_action(pred)
-            pred_raw_list.append(pred_raw.cpu().clone())
-            gt_raw_list.append(gt.cpu().clone())
-        else:
-            gt_norm_list.append(gt.cpu().clone())
-            pred_raw_list.append(pred.cpu().clone())
-            gt_raw_list.append(gt.cpu().clone())
-
-        # JSONL
-        entry: Dict[str, Any] = {
-            "pred_action_raw": pred_raw_list[-1].tolist(),
-            "gt_action_raw": gt_raw_list[-1].tolist(),
-        }
-        if normalizer:
-            entry["pred_action_normalized"] = pred_norm_list[-1].tolist()
-            entry["gt_action_normalized"] = gt_norm_list[-1].tolist()
-        ep = sample.get("episode_index")
-        if ep is not None:
-            entry["episode_index"] = int(ep)
-        fi = sample.get("frame_index")
-        if fi is not None:
-            entry["frame_index"] = int(fi)
-        preds_jsonl.append(entry)
-
-    pred_norm_t = torch.stack(pred_norm_list)
-    gt_norm_t = torch.stack(gt_norm_list)
-    pred_raw_t = torch.stack(pred_raw_list)
-    gt_raw_t = torch.stack(gt_raw_list)
-
-    # Build report
+    # Build full report
     report: Dict[str, Any] = {
         "dataset": {
             "dataset_name": args.dataset_name,
@@ -211,33 +278,14 @@ def main() -> None:
             "num_train_samples": len(train_samples),
             "heldout_ratio": args.heldout_ratio,
             "has_image": True,
-            "action_dim": pred_raw_t.shape[-1],
+            "action_dim": report_metrics["action_dim"],
             "normalization": {
                 "enabled": normalizer is not None,
                 "stats_path": str(norm_cfg.get("stats_path", "")) if normalizer else None,
             },
         },
-        "raw_action_metrics": _compute_metrics(pred_raw_t, gt_raw_t),
-        "normalized_action_metrics": _compute_metrics(pred_norm_t, gt_norm_t),
+        **report_metrics,
     }
-
-    # Baselines (raw action space)
-    action_dim = pred_raw_t.shape[-1]
-    zero_baseline = ZeroActionBaseline(action_dim)
-    zero_preds = torch.stack([zero_baseline.predict(s) for s in pool])
-    baselines: Dict[str, Any] = {
-        "zero_action": _compute_metrics(zero_preds, gt_raw_t),
-    }
-    if train_samples:
-        mean_act = compute_mean_action(train_samples)
-        mean_preds = torch.stack(
-            [MeanActionBaseline(mean_act).predict() for _ in pool]
-        )
-        baselines["mean_action"] = _compute_metrics(mean_preds, gt_raw_t)
-    prev = PreviousActionBaseline(action_dim)
-    prev_preds = torch.stack([prev.predict(s) for s in pool])
-    baselines["previous_action"] = _compute_metrics(prev_preds, gt_raw_t)
-    report["baselines"] = baselines
 
     # Print
     m = report["raw_action_metrics"]
@@ -261,11 +309,11 @@ def main() -> None:
     out_path.write_text(json.dumps(report, indent=2))
     print(f"\nReport saved to {out_path}")
 
-    if args.predictions_output and preds_jsonl:
+    if args.predictions_output and predictions:
         pred_path = Path(args.predictions_output)
         pred_path.parent.mkdir(parents=True, exist_ok=True)
         with open(pred_path, "w") as f:
-            for entry in preds_jsonl:
+            for entry in predictions:
                 f.write(json.dumps(entry) + "\n")
         print(f"Predictions saved to {pred_path}")
 
