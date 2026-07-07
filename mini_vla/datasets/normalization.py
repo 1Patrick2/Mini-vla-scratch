@@ -72,44 +72,32 @@ def compute_stats(
 
     Supports candidate key lists via ``state_keys`` and ``action_keys``.
     If candidate lists are provided, the first matching key from each
-    sample is used (via ``find_first_key``).  Falls back to the
-    single-key params for backward compatibility.
+    sample is used (via ``find_first_key`` + ``get_by_key`` for nested
+    dotted key support).  Falls back to the single-key params.
 
-    Args:
-        samples: List of sample dicts containing state and action keys.
-        state_key: Single key fallback (default ``observation.state``).
-        action_key: Single key fallback (default ``action``).
-        state_keys: Optional list of candidate state keys.
-        action_keys: Optional list of candidate action keys.
-        eps: Small constant for std denominator.
-
-    Returns:
-        A ``NormalizationStats`` instance.
+    Raises:
+        ValueError: If no action key is matched in any sample.
     """
-    from mini_vla.datasets.key_utils import find_first_key
+    from mini_vla.datasets.key_utils import find_first_key, get_by_key, list_available_keys
 
     state_list: List[torch.Tensor] = []
     action_list: List[torch.Tensor] = []
     for s in samples:
         state_k = find_first_key(s, state_keys) if state_keys else state_key
         action_k = find_first_key(s, action_keys) if action_keys else action_key
-        st = s.get(state_k) if isinstance(state_k, str) else None
-        ac = s.get(action_k) if isinstance(action_k, str) else None
-        if st is None and state_keys:
-            # Try all candidates directly as flat keys
-            for k in state_keys:
-                if k in s:
-                    st = s[k]
-                    break
-        if ac is None and action_keys:
-            for k in action_keys:
-                if k in s:
-                    ac = s[k]
-                    break
+        st = get_by_key(s, state_k) if state_k else None
+        ac = get_by_key(s, action_k) if action_k else None
         if st is not None:
             state_list.append(torch.as_tensor(st, dtype=torch.float32))
         if ac is not None:
             action_list.append(torch.as_tensor(ac, dtype=torch.float32))
+
+    if not action_list:
+        available = list_available_keys(samples[0]) if samples else []
+        raise ValueError(
+            f"No action key matched candidates: {action_keys or [action_key]}. "
+            f"Available keys: {available}"
+        )
 
     def _mean_std(tensors: List[torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
         stacked = torch.stack(tensors)

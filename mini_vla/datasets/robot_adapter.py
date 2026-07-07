@@ -86,7 +86,11 @@ class BaseRobotDatasetAdapter:
         image_size: Target image size (default 64).
         max_text_len: Max token length for instruction (default 16).
         normalizer: Optional ``ActionNormalizer`` for state/action.
-        strict: If True, missing required keys raise errors (default True).
+        strict: If True (default), missing required keys raise errors.
+            ``strict=False`` is for inspect/smoke/debug only, **not** for training.
+        allow_missing_action: If True and ``strict=False``, missing action
+            is replaced with a zero tensor instead of raising.  Default False.
+            Never set this to True for training — action is required for BC.
     """
 
     def __init__(
@@ -97,6 +101,7 @@ class BaseRobotDatasetAdapter:
         max_text_len: int = 16,
         normalizer: Optional[ActionNormalizer] = None,
         strict: bool = True,
+        allow_missing_action: bool = False,
     ) -> None:
         self.base_dataset = base_dataset
         self.spec = spec
@@ -104,6 +109,7 @@ class BaseRobotDatasetAdapter:
         self.max_text_len = max_text_len
         self.normalizer = normalizer
         self.strict = strict
+        self.allow_missing_action = allow_missing_action
 
     def __len__(self) -> int:
         return len(self.base_dataset)
@@ -150,10 +156,11 @@ class BaseRobotDatasetAdapter:
         # ── Action ─────────────────────────────────────────────────
         action_key = find_first_key(raw, self.spec.action_keys)
         if action_key is None:
-            if self.strict:
+            if self.strict or not self.allow_missing_action:
                 raise KeyError(
                     f"No action key found among {self.spec.action_keys}. "
-                    f"Available keys: {list(raw.keys())}"
+                    f"Available keys: {list(raw.keys())}. "
+                    "Action is required for BC training."
                 )
             action = torch.zeros(2, dtype=torch.float32)
         else:

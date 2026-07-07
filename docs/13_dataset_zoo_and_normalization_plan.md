@@ -141,12 +141,17 @@ python -m pytest tests/test_inspect_robot_dataset_realdata.py -m realdata
 
 ## Acceptance Criteria (Stage 6)
 
-- [ ] README/SETUP/PLAN/ROADMAP synced to Stage 6
-- [ ] `requirements-robot.txt` created (optional)
-- [ ] `DatasetSpec` + `Registry` defined and tested
-- [ ] Generic `inspect_robot_dataset.py` works with mock and real PushT
-- [ ] Normalization stats compute/test works
+- [x] README/SETUP/PLAN/ROADMAP synced to Stage 6
+- [x] `requirements-robot.txt` created (optional)
+- [x] `DatasetSpec` + `Registry` defined and tested
+- [x] `key_utils.py` (flat + nested dotted key support)
+- [x] Generic `lerobot_loader.py` (no longer PushT-specific)
+- [x] Generic `inspect_robot_dataset.py` works with mock and real PushT
+- [x] `BaseRobotDatasetAdapter` implemented
+- [x] `factory.py` supports `dataset_type=robot_dataset`
+- [x] Normalization stats compute/test works
+- [x] Normalized PushT train/eval works
+- [x] Default pytest does not require network
+- [x] `ruff check .` passes
 - [ ] ALOHA sim inspect passes or gives clear diagnostic
 - [ ] LIBERO inspect passes or gives clear diagnostic
-- [ ] Default pytest does not require network
-- [ ] `ruff check .` passes

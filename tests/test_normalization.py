@@ -115,3 +115,30 @@ class TestSaveLoadStats:
         assert torch.allclose(loaded.action_mean, stats.action_mean)
         assert torch.allclose(loaded.action_std, stats.action_std)
         assert loaded.eps == stats.eps
+
+
+class TestComputeStatsNested:
+    def test_nested_key(self):
+        samples = [
+            {"observation": {"state": torch.tensor([1.0, 2.0])},
+             "action": torch.tensor([3.0, 4.0])},
+            {"observation": {"state": torch.tensor([5.0, 6.0])},
+             "action": torch.tensor([7.0, 8.0])},
+        ]
+        stats = compute_stats(
+            samples,
+            state_keys=["observation.state"],
+            action_keys=["action"],
+        )
+        assert torch.allclose(stats.state_mean, torch.tensor([3.0, 4.0]))
+        assert torch.allclose(stats.action_mean, torch.tensor([5.0, 6.0]))
+
+    def test_no_action_raises(self):
+        import pytest
+        samples = [{"observation": {"state": torch.tensor([1.0, 2.0])}}]
+        with pytest.raises(ValueError, match="No action key matched"):
+            compute_stats(
+                samples,
+                state_keys=["observation.state"],
+                action_keys=["action"],
+            )

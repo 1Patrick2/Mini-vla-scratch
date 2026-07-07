@@ -86,9 +86,13 @@ def _build_robot_dataset(
     norm_cfg = data_cfg.get("normalization", {})
     if norm_cfg.get("enabled", False):
         stats_path = Path(norm_cfg["stats_path"])
-        if stats_path.exists():
-            stats = load_stats(stats_path)
-            normalizer = ActionNormalizer(stats)
+        if not stats_path.exists():
+            raise FileNotFoundError(
+                f"normalization.enabled=true but stats_path does not exist: {stats_path}. "
+                "Run scripts/compute_dataset_stats.py first."
+            )
+        stats = load_stats(stats_path)
+        normalizer = ActionNormalizer(stats)
 
     return BaseRobotDatasetAdapter(
         base_dataset,

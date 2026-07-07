@@ -61,8 +61,6 @@ def main() -> None:
     args = build_parser().parse_args()
 
     spec = get_dataset_spec(args.dataset_name)
-    spec.state_keys[0] if spec.state_keys else "observation.state"
-    spec.action_keys[0] if spec.action_keys else "action"
 
     if args.mock_data:
         samples = _make_mock_samples(spec, n=args.max_samples)

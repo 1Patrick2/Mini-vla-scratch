@@ -1,6 +1,7 @@
 """Tests for the factory with robot_dataset type."""
 
 import numpy as np
+import pytest
 
 from mini_vla.datasets.factory import build_dataset
 from mini_vla.datasets.robot_adapter import BaseRobotDatasetAdapter
@@ -60,6 +61,18 @@ class TestBuildRobotDataset:
             "dataset_type": "robot_dataset",
             "dataset_name": "nonexistent",
         }
-        import pytest
         with pytest.raises(ValueError, match="Unknown"):
+            build_dataset(cfg, base_dataset=samples)
+
+    def test_missing_stats_path_raises(self):
+        samples = _make_mock_push_t_samples()
+        cfg = {
+            "dataset_type": "robot_dataset",
+            "dataset_name": "pusht",
+            "normalization": {
+                "enabled": True,
+                "stats_path": "nonexistent_stats.json",
+            },
+        }
+        with pytest.raises(FileNotFoundError, match="stats_path"):
             build_dataset(cfg, base_dataset=samples)
