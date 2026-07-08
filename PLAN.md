@@ -20,9 +20,8 @@ image + instruction + state → action
 | Stage 4 | 推理 + 可视化 (Policy Inference) | ✅ 完成 |
 | Stage 5 | PushT Dataset Evaluation | ✅ 完成 |
 | Stage 6 | Dataset Zoo + Action Normalization | ✅ 完成 |
-| Stage 7 | Strict Episode Split + History/Delta BC | ⏳ |
+| Stage 7 | Strict Episode Split + History/Delta BC | ✅ 完成 (2026-07-08) |
 | Stage 8 | ACT-lite / Action Chunking | 🔮 |
-| Stage 9 | Export / Deployment | 🔮 |
 | Stage 9 | Export / Deployment | 🔮 |
 
 ---

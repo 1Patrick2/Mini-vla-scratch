@@ -226,6 +226,31 @@ def evaluate_samples_with_predictor(
         fi = sample.get("frame_index")
         if fi is not None:
             entry["frame_index"] = int(fi)
+
+        # Augment with delta-specific fields if applicable
+        if sample.get("target_type") == "delta_action":
+            entry["target_type"] = "delta_action"
+            if "prev_action_raw" in sample:
+                entry["prev_action_raw"] = (
+                    sample["prev_action_raw"].detach().cpu().tolist()
+                )
+            if "prev_action_normalized" in sample:
+                entry["prev_action_normalized"] = (
+                    sample["prev_action_normalized"].detach().cpu().tolist()
+                )
+            if normalizer:
+                entry["pred_delta_normalized"] = pred.detach().cpu().tolist()
+            else:
+                entry["pred_delta_raw"] = pred.detach().cpu().tolist()
+            if "delta_action_normalized" in sample:
+                entry["gt_delta_normalized"] = (
+                    sample["delta_action_normalized"].detach().cpu().tolist()
+                )
+            if "delta_action_raw" in sample:
+                entry["gt_delta_raw"] = (
+                    sample["delta_action_raw"].detach().cpu().tolist()
+                )
+
         preds_jsonl.append(entry)
 
     pred_raw_t = torch.stack(pred_raw_list)

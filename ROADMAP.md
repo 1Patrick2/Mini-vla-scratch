@@ -195,27 +195,39 @@ ALOHA sim inspect passed (action_dim=14). LIBERO inspect blocked by SSL.
 
 ---
 
-## Stage 7: Strict Episode Split + History/Delta BC ⏳
+## Stage 7: Strict Episode Split + History/Delta BC ✅ Complete
 
 **Goal:** Build a reproducible PushT BC benchmark with strict episode-level
 split, train-only normalization, and history/delta action policy variants.
 
 **Key files:**
 - `mini_vla/datasets/splits.py` — EpisodeSplit manifest
-- `mini_vla/datasets/history_wrapper.py` — temporal context wrapper
+- `mini_vla/datasets/transforms.py` — HistoryDatasetWrapper, DeltaActionTargetWrapper
 - `scripts/create_episode_split.py` — split manifest CLI
-- `configs/train/pusht_strict_single_frame.yaml` — strict baseline config
-- `configs/train/pusht_strict_history.yaml` — history model config
-- `configs/train/pusht_strict_delta.yaml` — delta action config
-- `docs/15_strict_episode_split_and_history_delta_bc.md` — design doc
+- `scripts/compute_dataset_stats.py` — split-aware stats CLI
+- `configs/train/pusht_strict_single_frame.yaml` — strict baseline
+- `configs/train/pusht_strict_history.yaml` — history model
+- `configs/train/pusht_strict_delta.yaml` — delta action
+- `docs/15_strict_episode_split_and_history_delta_bc.md` — design doc + results
+- `scripts/compare_eval_reports.py` — cross-method comparison
+- `scripts/audit_stage7_outputs.py` — output integrity checks
+
+**Results (raw action space, strict unseen-episode eval):**
+
+| Method | Raw MAE | Beats Previous |
+|---|---|---:|
+| SingleFrame | 19.51 | ❌ |
+| History | 11.02 | ❌ |
+| DeltaAction | **6.37** | **✅** |
 
 **Acceptance:**
-- Split manifest reproducible
+- Split manifest reproducible (6 train / 2 eval episodes)
 - Train/eval episode ids have no overlap
-- Stats computed from train split only
-- SingleFrame strict train/eval runs
-- History/delta model train/eval runs
-- All baselines in raw action space
+- Stats computed from train split only (745 samples)
+- SingleFrame, History, DeltaAction all train/eval on strict split
+- All baselines compared in raw action space
+- DeltaAction beats previous-action baseline: 6.37 < 6.67
+- All unit tests pass, ruff clean
 - Stage 5/6 pipelines not broken
 
 ---

@@ -150,7 +150,12 @@ class DeltaActionTargetWrapper:
         return len(self.dataset)
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
-        sample = self.dataset[index]
+        # Clone sample to avoid in-place pollution of underlying dataset
+        base = self.dataset[index]
+        sample: Dict[str, Any] = {
+            k: v.clone() if isinstance(v, torch.Tensor) else v
+            for k, v in base.items()
+        }
 
         # Preserve original targets
         sample["target_type"] = "delta_action"

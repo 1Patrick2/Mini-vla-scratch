@@ -38,10 +38,16 @@ def main() -> None:
                         help="Output markdown path (default stdout).")
     args = parser.parse_args()
 
+    # Clean display names for method comparison
+    name_map = {
+        "single_frame": "SingleFrame",
+        "history": "History",
+        "delta": "DeltaAction",
+    }
+
     rows: List[Dict[str, Any]] = []
     for path in args.reports:
         report = load_report(path)
-        report.get("dataset", {})
         raw = report.get("raw_action_metrics", {})
         norm = report.get("normalized_action_metrics", {})
         baselines = report.get("baselines", {})
@@ -51,7 +57,8 @@ def main() -> None:
         prev_mae = _get_baseline_mae(baselines, "previous_action")
         model_mae = raw.get("mae", 0)
 
-        method = Path(path).stem.replace("pusht_strict_", "").replace("_report", "")
+        raw_method = Path(path).stem.replace("pusht_strict_", "").replace("_report", "")
+        method = name_map.get(raw_method, raw_method)
         rows.append({
             "method": method,
             "raw_mae": model_mae,

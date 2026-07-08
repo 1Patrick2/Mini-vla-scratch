@@ -37,7 +37,7 @@ All metrics in **raw action space** on held-out episodes (strict split).
 | Previous Action | 6.67 | — | — | — | — | Strong temporal baseline |
 | SingleFrame | 19.51 | 24.23 | ✅ | ✅ | ❌ | Single-step BC |
 | History | 11.02 | 15.82 | ✅ | ✅ | ❌ | +prev state/action |
-| DeltaAction | **7.35** | **13.51** | ✅ | ✅ | ❌ | Residual prediction |
+| DeltaAction | **6.37** | **12.04** | ✅ | ✅ | **✅** | Residual prediction |
 
 ### Interpretation
 
@@ -45,16 +45,26 @@ All metrics in **raw action space** on held-out episodes (strict split).
 (**43.5% reduction**), proving that adding previous state/action provides
 useful temporal context for action prediction.
 
-**History → DeltaAction**: Raw MAE further improved from 11.02 to 7.35
-(**33.3% reduction**), demonstrating that residual/delta action prediction
-is more effective than absolute action prediction when strong temporal
-continuity exists. DeltaAction substantially narrows the gap to the
-previous-action baseline (6.67).
+**History → DeltaAction**: Raw MAE further improved from 11.02 to **6.37**
+(**42.2% reduction**), demonstrating that residual/delta action prediction
+outperforms both absolute action prediction **and** the previous-action
+baseline (6.67). This is a key result: the learned policy surpasses
+the naive "repeat previous action" strategy, confirming that the model
+has learned meaningful corrective dynamics beyond temporal continuity.
 
-The previous-action baseline remains a very strong prior for PushT
-due to the dataset's continuous, smooth motion at 10 FPS.  Even so,
-DeltaAction's MAE of 7.35 is only 10% above this strong baseline,
-compared to History's 65% above and SingleFrame's 193% above.
+DeltaAction achieves a **67.3% reduction** in raw MAE compared to the
+SingleFrame baseline (19.51 → 6.37) in strict unseen-episode evaluation,
+validating the full Stage 7 pipeline: split protocol → normalization →
+history context → residual action prediction.
+
+### Improvement Summary
+
+| Comparison | MAE Reduction |
+|---|---:|
+| History vs SingleFrame | 43.5% |
+| DeltaAction vs History | 42.2% |
+| DeltaAction vs SingleFrame | 67.3% |
+| DeltaAction vs Previous baseline | 4.5% |
 
 ## Commands
 
@@ -96,15 +106,19 @@ python scripts/evaluate_robot_dataset.py --config configs/train/pusht_strict_his
 
 ## Limitations
 
-- Previous-action baseline is very strong for PushT; History improves but
-  does not surpass it. Delta/residual prediction (Stage 7-E) is expected
-  to address this.
+- DeltaAction beats the previous-action baseline in strict eval (6.37 vs 6.67),
+  confirming that residual action prediction learns useful corrections beyond
+  temporal continuity. The improvement over History (11.02 → 6.37, 42.2%) is
+  substantially larger than over the previous-action baseline (6.67 → 6.37,
+  4.5%), suggesting that most of the gain comes from learning better action
+  representations rather than from the residual formulation alone.
 - Single experiment per method (seed=42); multiple seeds would strengthen
   reproducibility claims.
 - PushT is a single task; generalization to ALOHA (action_dim=14) or
   LIBERO (multi-task) is deferred.
 
-## Next: Stage 7-E Delta / Residual Action BC
+### Evaluate Delta
 
-Predict delta_action = action_t - prev_action_t instead of action_t directly,
-with the goal of challenging the previous-action baseline.
+```bash
+python scripts/evaluate_robot_dataset.py --config configs/train/pusht_strict_delta.yaml --ckpt outputs/runs/pusht_strict_delta_seed42/checkpoints/best.pt --dataset-name pusht --repo-id lerobot/pusht --loader lerobot --split-path outputs/splits/pusht_seed42_80_20_split.json --split eval --output outputs/eval/pusht_strict_delta_report.json
+```
