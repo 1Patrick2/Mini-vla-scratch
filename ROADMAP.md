@@ -218,7 +218,7 @@ split, train-only normalization, and history/delta action policy variants.
 |---|---|---:|
 | SingleFrame | 19.51 | ❌ |
 | History | 11.02 | ❌ |
-| DeltaAction | **6.37** | **✅** |
+| DeltaAction | 7.35 | ❌ |
 
 **Acceptance:**
 - Split manifest reproducible (6 train / 2 eval episodes)
@@ -226,7 +226,7 @@ split, train-only normalization, and history/delta action policy variants.
 - Stats computed from train split only (745 samples)
 - SingleFrame, History, DeltaAction all train/eval on strict split
 - All baselines compared in raw action space
-- DeltaAction beats previous-action baseline: 6.37 < 6.67
+- DeltaAction narrows gap to previous-action baseline: 7.35 vs 6.67
 - All unit tests pass, ruff clean
 - Stage 5/6 pipelines not broken
 
