@@ -128,19 +128,45 @@ def _get_action_views(
 
     ``pred`` is the model output (always in training space = normalized
     if normalizer is active, raw otherwise).
+
+    For delta_action targets, ``pred`` is a delta; it is reconstructed
+    to an action using ``prev_action`` before returning.
     """
+    is_delta = sample.get("target_type") == "delta_action"
+
     if normalizer:
-        gt_norm = sample.get("action_normalized", sample["action"])
-        gt_raw = sample.get("action_raw")
-        if gt_raw is None:
-            gt_raw = normalizer.denormalize_action(gt_norm)
-        pred_norm = pred
-        pred_raw = normalizer.denormalize_action(pred_norm)
+        if is_delta:
+            pred_delta_norm = pred
+            prev_norm = sample.get("prev_action_normalized",
+                                    sample.get("prev_action", torch.zeros_like(pred)))
+            pred_norm = prev_norm + pred_delta_norm
+            gt_norm = sample.get("target_action_normalized",
+                                  sample.get("action_normalized", sample["action"]))
+            gt_raw = sample.get("target_action_raw", sample.get("action_raw"))
+            if gt_raw is None:
+                gt_raw = normalizer.denormalize_action(gt_norm)
+            pred_raw = normalizer.denormalize_action(pred_norm)
+        else:
+            gt_norm = sample.get("action_normalized", sample["action"])
+            gt_raw = sample.get("action_raw")
+            if gt_raw is None:
+                gt_raw = normalizer.denormalize_action(gt_norm)
+            pred_norm = pred
+            pred_raw = normalizer.denormalize_action(pred_norm)
     else:
-        gt_raw = sample.get("action_raw", sample["action"])
-        pred_raw = pred
-        pred_norm = pred
-        gt_norm = gt_raw
+        if is_delta:
+            pred_delta_raw = pred
+            prev_raw = sample.get("prev_action_raw",
+                                   sample.get("prev_action", torch.zeros_like(pred)))
+            pred_raw = prev_raw + pred_delta_raw
+            gt_raw = sample.get("target_action_raw", sample.get("action_raw", sample["action"]))
+            pred_norm = pred_raw
+            gt_norm = gt_raw
+        else:
+            gt_raw = sample.get("action_raw", sample["action"])
+            pred_raw = pred
+            pred_norm = pred
+            gt_norm = gt_raw
     return pred_norm, gt_norm, pred_raw, gt_raw
 
 
@@ -324,6 +350,12 @@ def main() -> None:
             "normalization": {
                 "enabled": normalizer is not None,
                 "stats_path": str(norm_cfg.get("stats_path", "")) if normalizer else None,
+            },
+            "target": {
+                "type": config.get("data", {}).get("target", {}).get("type", "action"),
+                "reconstruction": "pred_action = prev_action + pred_delta"
+                if config.get("data", {}).get("target", {}).get("type") == "delta_action"
+                else None,
             },
             "split": {
                 "enabled": bool(args.split_path),

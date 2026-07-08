@@ -1,0 +1,56 @@
+base: ../base.yaml
+
+data:
+  dataset_type: robot_dataset
+  dataset_name: pusht
+  loader: lerobot
+  repo_id: lerobot/pusht
+
+  image_size: 64
+  max_text_len: 16
+  batch_size: 4
+  num_workers: 0
+  max_samples: 1024
+  strict: true
+
+  split:
+    enabled: true
+    path: outputs/splits/pusht_seed42_80_20_split.json
+    name: train
+
+  normalization:
+    enabled: true
+    stats_path: outputs/dataset_reports/pusht_strict_train_stats.json
+    normalize_state: true
+    normalize_action: true
+
+  history:
+    enabled: true
+    history_size: 1
+    include_prev_state: true
+    include_prev_action: true
+    first_frame_prev_state: current
+    first_frame_prev_action: zero
+    concat_to_state: true
+
+  target:
+    type: delta_action
+
+model:
+  name: mini_vla
+  state_dim: 6
+  action_dim: 2
+  state_encoder:
+    input_dim: 6
+    hidden_dim: 64
+    output_dim: 128
+  use_prev_state: true
+  use_prev_action: true
+  predict_delta: true
+  target_type: delta_action
+
+train:
+  epochs: 5
+  lr: 0.001
+  device: cpu
+  output_dir: outputs/runs/pusht_strict_delta_seed42/checkpoints

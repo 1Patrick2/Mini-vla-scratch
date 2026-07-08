@@ -73,7 +73,7 @@ def main() -> None:
         return
 
     # Validate data exists (Toy2D only)
-    if dataset_type != "pusht":
+    if dataset_type == "toy_2d":
         data_path = Path(config["data"]["data_root"])
         if not (data_path / "episodes").is_dir():
             print(
@@ -88,9 +88,7 @@ def main() -> None:
     print(f"\nStarting training for {epochs} epoch(s) ...")
     trainer.fit(epochs=epochs)
 
-    ckpt_dir = Path(
-        config.get("paths", {}).get("output_root", "outputs")
-    ) / "checkpoints"
+    ckpt_dir = trainer.checkpoint_dir
     print(f"\nDone!  Checkpoints saved to {ckpt_dir}/")
     print(f"  last: {ckpt_dir / 'last.pt'}")
     print(f"  best: {ckpt_dir / 'best.pt'}")

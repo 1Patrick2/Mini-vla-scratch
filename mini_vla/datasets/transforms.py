@@ -129,3 +129,51 @@ class HistoryDatasetWrapper:
             sample["state"] = torch.cat([cur_st, prv_st, prv_ac])
 
         return sample
+
+
+class DeltaActionTargetWrapper:
+    """Transform training target from absolute action to delta action.
+
+    Computes ``delta_action = action - prev_action`` and replaces
+    ``sample["action"]`` with this delta, while preserving the original
+    action in ``target_action_*`` fields for evaluation.
+
+    Requires sample to have ``action``, ``prev_action``,
+    and optionally ``action_raw`` / ``action_normalized`` /
+    ``prev_action_raw`` / ``prev_action_normalized``.
+    """
+
+    def __init__(self, dataset: Sequence[Dict[str, Any]]) -> None:
+        self.dataset = dataset
+
+    def __len__(self) -> int:
+        return len(self.dataset)
+
+    def __getitem__(self, index: int) -> Dict[str, Any]:
+        sample = self.dataset[index]
+
+        # Preserve original targets
+        sample["target_type"] = "delta_action"
+        sample["target_action_raw"] = sample.get("action_raw", sample["action"]).clone()
+        if "action_normalized" in sample:
+            sample["target_action_normalized"] = sample["action_normalized"].clone()
+        else:
+            sample["target_action_normalized"] = sample["action"].clone()
+
+        # Compute delta in available spaces
+        if "action_normalized" in sample and "prev_action_normalized" in sample:
+            sample["delta_action_normalized"] = (
+                sample["action_normalized"] - sample["prev_action_normalized"]
+            )
+        if "action_raw" in sample and "prev_action_raw" in sample:
+            sample["delta_action_raw"] = (
+                sample["action_raw"] - sample["prev_action_raw"]
+            )
+
+        # Set training target: prefer normalized delta, fall back to raw
+        if "delta_action_normalized" in sample:
+            sample["action"] = sample["delta_action_normalized"]
+        elif "delta_action_raw" in sample:
+            sample["action"] = sample["delta_action_raw"]
+
+        return sample

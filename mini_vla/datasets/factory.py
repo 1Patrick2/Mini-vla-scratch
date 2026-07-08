@@ -138,6 +138,17 @@ def _build_robot_dataset(
             state_dim=data_cfg.get("state_dim", 2),
         )
 
+    # Optional target transform (e.g., delta_action)
+    target_cfg = data_cfg.get("target", {})
+    if target_cfg.get("type") == "delta_action":
+        from mini_vla.datasets.transforms import DeltaActionTargetWrapper
+        if not hist_cfg.get("enabled", False):
+            raise ValueError(
+                "delta_action target requires history.enabled=true "
+                "to provide prev_action fields."
+            )
+        dataset = DeltaActionTargetWrapper(dataset)
+
     return dataset
 
 
