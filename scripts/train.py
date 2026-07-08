@@ -51,6 +51,18 @@ def main() -> None:
         max_samples = config["data"].get("max_samples", "all")
         print(f"  Repo:  {repo_id}")
         print(f"  Max:   {max_samples} samples")
+    elif dataset_type == "robot_dataset":
+        dataset_name = config["data"].get("dataset_name", "")
+        repo_id = config["data"].get("repo_id", "")
+        loader = config["data"].get("loader", "lerobot")
+        max_samples = config["data"].get("max_samples", "all")
+        split_name = config["data"].get("split", {}).get("name", "")
+        print(f"  Dataset: {dataset_name}")
+        print(f"  Repo:    {repo_id}")
+        print(f"  Loader:  {loader}")
+        print(f"  Max:     {max_samples} samples")
+        if split_name:
+            print(f"  Split:   {split_name}")
     else:
         data_root = config["data"]["data_root"]
         print(f"  Root:  {data_root}")

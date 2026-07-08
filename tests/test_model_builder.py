@@ -242,3 +242,68 @@ class TestDataLoaderSmoke:
         batch = next(iter(loader))
         out = self.model(batch)
         assert out.shape == (2, 2)
+
+
+class TestStateDimFallback:
+    """model.state_dim should propagate to state_encoder.input_dim."""
+
+    def test_state_dim_fallback(self):
+        config = {
+            "model": {
+                "state_dim": 6,
+                "action_dim": 2,
+                "vision_encoder": {"type": "small_cnn", "output_dim": 128},
+                "text_encoder": {"type": "mock_llm", "output_dim": 128},
+                "state_encoder": {"output_dim": 128},
+                "fusion": {"type": "concat_mlp", "input_dim": 384, "output_dim": 128},
+                "action_head": {"input_dim": 128},
+            }
+        }
+        model = build_model(config)
+        batch = {
+            "image": torch.randn(2, 3, 64, 64),
+            "input_ids": torch.randint(0, 128, (2, 16)),
+            "attention_mask": torch.ones(2, 16, dtype=torch.long),
+            "state": torch.randn(2, 6),
+        }
+        out = model(batch)
+        assert out.shape == (2, 2)
+
+    def test_state_dim_conflict_raises(self):
+        config = {
+            "model": {
+                "state_dim": 6,
+                "action_dim": 2,
+                "vision_encoder": {"type": "small_cnn", "output_dim": 128},
+                "text_encoder": {"type": "mock_llm", "output_dim": 128},
+                "state_encoder": {"input_dim": 2, "output_dim": 128},
+                "fusion": {"type": "concat_mlp", "input_dim": 384, "output_dim": 128},
+                "action_head": {"input_dim": 128},
+            }
+        }
+        with pytest.raises(ValueError, match="state_encoder.input_dim"):
+            build_model(config)
+
+    def test_state_dim_6_forward(self):
+        """Full forward pass with state_dim=6 (simulates History config)."""
+        config = {
+            "model": {
+                "name": "mini_vla",
+                "state_dim": 6,
+                "action_dim": 2,
+                "vision_encoder": {"type": "small_cnn", "output_dim": 128},
+                "text_encoder": {"type": "mock_llm", "output_dim": 128, "freeze": True},
+                "state_encoder": {"input_dim": 6, "output_dim": 128},
+                "fusion": {"type": "concat_mlp", "input_dim": 384, "output_dim": 128},
+                "action_head": {"input_dim": 128},
+            }
+        }
+        model = build_model(config)
+        batch = {
+            "image": torch.randn(2, 3, 64, 64),
+            "input_ids": torch.randint(0, 128, (2, 16)),
+            "attention_mask": torch.ones(2, 16, dtype=torch.long),
+            "state": torch.randn(2, 6),
+        }
+        out = model(batch)
+        assert out.shape == (2, 2)

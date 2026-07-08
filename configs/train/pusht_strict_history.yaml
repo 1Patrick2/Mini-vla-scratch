@@ -49,3 +49,4 @@ train:
   epochs: 5
   lr: 0.001
   device: cpu
+  output_dir: outputs/runs/pusht_strict_history_seed42/checkpoints

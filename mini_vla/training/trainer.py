@@ -39,11 +39,16 @@ class Trainer:
         # Optimizer — only trainable (requires_grad=True) parameters
         self.optimizer = create_optimizer(self.model, config)
 
-        # Checkpoint directory
-        self.checkpoint_dir = (
-            Path(config.get("paths", {}).get("output_root", "outputs"))
-            / "checkpoints"
-        )
+        # Checkpoint directory — use train.output_dir if specified
+        train_cfg = config.get("train", {})
+        custom_dir = train_cfg.get("output_dir")
+        if custom_dir:
+            self.checkpoint_dir = Path(custom_dir)
+        else:
+            self.checkpoint_dir = (
+                Path(config.get("paths", {}).get("output_root", "outputs"))
+                / "checkpoints"
+            )
 
         # DataLoader
         self.train_loader = self._build_dataloader()
