@@ -2,6 +2,8 @@
 
 Loads a trained checkpoint and provides ``predict()`` and ``select_action()``
 for single-sample inference following LeRobot-style policy API.
+
+Supports both legacy raw-MiniVLA checkpoints and new policy-based checkpoints.
 """
 
 from __future__ import annotations
@@ -35,11 +37,20 @@ class Predictor:
         action_limit: float = 0.05,
     ) -> None:
         self.device = torch.device(device)
-        self.model = build_model(config).to(self.device)
-        load_checkpoint(checkpoint_path, self.model, device=self.device)
-        self.model.eval()
         self.clip_action = clip_action
         self.action_limit = action_limit
+        self._policy = None
+
+        # Try policy path first (new), fall back to raw model (legacy)
+        if config.get("policy", {}).get("type"):
+            from mini_vla.policies import build_policy
+            self._policy = build_policy(config).to(self.device)
+            self.model = self._policy.model
+        else:
+            self.model = build_model(config).to(self.device)
+
+        load_checkpoint(checkpoint_path, self.model, device=self.device)
+        self.model.eval()
 
     def predict(self, sample: Dict[str, torch.Tensor]) -> torch.Tensor:
         """Run inference on a single dataset sample.
@@ -67,15 +78,17 @@ class Predictor:
                 sample["attention_mask"].unsqueeze(0).to(self.device)
             )
 
-        with torch.no_grad():
-            action_pred = self.model(batch)  # Tensor[1, action_dim]
-
-        action = action_pred.squeeze(0).cpu()  # Tensor[action_dim]
+        # Use policy predict_action if available (handles delta reconstruction)
+        if self._policy is not None:
+            with torch.no_grad():
+                out = self._policy.predict_action(batch)
+            action = out["action"].squeeze(0).cpu()
+        else:
+            with torch.no_grad():
+                action_pred = self.model(batch)  # Tensor[1, action_dim]
+            action = action_pred.squeeze(0).cpu()
 
         if self.clip_action:
-            # Use tensor-level clamp here rather than
-            # robot_interface.action_adapter.clip_action() (list-based),
-            # to avoid unnecessary tensor↔list conversions on the inference path.
             action = torch.clamp(action, -self.action_limit, self.action_limit)
 
         return action
