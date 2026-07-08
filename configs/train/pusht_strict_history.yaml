@@ -37,6 +37,10 @@ model:
   name: mini_vla
   state_dim: 6
   action_dim: 2
+  state_encoder:
+    input_dim: 6
+    hidden_dim: 64
+    output_dim: 128
   use_prev_state: true
   use_prev_action: true
   predict_delta: false

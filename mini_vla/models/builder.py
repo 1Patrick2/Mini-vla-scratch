@@ -85,8 +85,17 @@ def build_model(config: Dict[str, Any]) -> MiniVLA:
     # ── State encoder ───────────────────────────────────────────
     se_cfg = cfg.get("state_encoder", {})
     se_output = se_cfg.get("output_dim", 128)
+    # Use model.state_dim as fallback for state_encoder.input_dim
+    state_dim = cfg.get("state_dim")
+    se_input = se_cfg.get("input_dim")
+    if se_input is not None and state_dim is not None and se_input != state_dim:
+        raise ValueError(
+            f"Model config conflict: state_encoder.input_dim ({se_input}) "
+            f"does not match model.state_dim ({state_dim}).\n"
+            "Remove state_encoder.input_dim or set it equal to state_dim."
+        )
     state_encoder = StateEncoder(
-        input_dim=se_cfg.get("input_dim", 2),
+        input_dim=se_input if se_input is not None else (state_dim if state_dim is not None else 2),
         hidden_dim=se_cfg.get("hidden_dim", 64),
         output_dim=se_output,
     )
