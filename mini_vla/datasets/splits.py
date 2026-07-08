@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 
 @dataclass
@@ -37,13 +37,27 @@ class EpisodeSplit:
     num_eval_samples: int = 0
 
 
+def get_episode_id(sample: Dict[str, Any]) -> Optional[int]:
+    """Extract a consistent ``int`` episode index from a sample.
+
+    Supports ``int``, ``numpy`` scalar, and ``torch`` scalar tensor.
+    Returns ``None`` if the key is missing.
+    """
+    ep = sample.get("episode_index")
+    if ep is None:
+        return None
+    if hasattr(ep, "item"):
+        ep = ep.item()
+    return int(ep)
+
+
 def collect_episode_ids(samples: Sequence[Dict[str, Any]]) -> List[int]:
     """Collect unique episode indices from a list of samples, sorted."""
     ids: set[int] = set()
     for s in samples:
-        ep = s.get("episode_index")
+        ep = get_episode_id(s)
         if ep is not None:
-            ids.add(int(ep))
+            ids.add(ep)
     return sorted(ids)
 
 
@@ -73,6 +87,16 @@ def create_episode_split(
     import random
 
     episode_ids = collect_episode_ids(samples)
+    if len(episode_ids) < 2:
+        raise ValueError(
+            f"Need at least 2 episodes for a train/eval split, "
+            f"but got {len(episode_ids)}: {episode_ids}"
+        )
+    if not (0 < train_ratio < 1):
+        raise ValueError(
+            f"train_ratio must be between 0 and 1, got {train_ratio}"
+        )
+
     rng = random.Random(seed)
     rng.shuffle(episode_ids)
 
@@ -80,8 +104,14 @@ def create_episode_split(
     train_ids = sorted(episode_ids[:n_train])
     eval_ids = sorted(episode_ids[n_train:])
 
-    train_count = sum(1 for s in samples if s.get("episode_index") in train_ids)
-    eval_count = sum(1 for s in samples if s.get("episode_index") in eval_ids)
+    def _is_train(s):
+        return get_episode_id(s) in train_ids
+
+    def _is_eval(s):
+        return get_episode_id(s) in eval_ids
+
+    train_count = sum(1 for s in samples if _is_train(s))
+    eval_count = sum(1 for s in samples if _is_eval(s))
 
     return EpisodeSplit(
         dataset_name=dataset_name,
@@ -102,7 +132,7 @@ def filter_samples_by_episode(
 ) -> List[Dict[str, Any]]:
     """Filter samples, keeping only those whose ``episode_index`` is in ``episode_ids``."""
     id_set = set(episode_ids)
-    return [s for s in samples if s.get("episode_index") in id_set]
+    return [s for s in samples if get_episode_id(s) in id_set]
 
 
 def save_split(split: EpisodeSplit, path: str | Path) -> Path:
@@ -144,6 +174,7 @@ def validate_split(split: EpisodeSplit) -> None:
 
 __all__ = [
     "EpisodeSplit",
+    "get_episode_id",
     "collect_episode_ids",
     "create_episode_split",
     "filter_samples_by_episode",

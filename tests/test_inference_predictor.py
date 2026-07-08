@@ -186,7 +186,7 @@ class TestInferenceQuality:
             Toy2DDataset(data_root), batch_size=4, collate_fn=collate_toy_2d,
         )
         opt = create_optimizer(model, cfg)
-        for _ in range(30):
+        for _ in range(50):
             for batch in loader:
                 loss = mse_action_loss(model(batch), batch["action"])
                 opt.zero_grad()

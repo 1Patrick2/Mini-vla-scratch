@@ -10,6 +10,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import sys
 from pathlib import Path
@@ -256,7 +257,10 @@ def main() -> None:
         eval_samples = [dataset[i] for i in range(len(dataset))]
         train_samples = []
     else:
-        dataset = build_dataset(data_cfg)
+        eval_cfg = copy.deepcopy(data_cfg) if args.split_path else data_cfg
+        if args.split_path:
+            eval_cfg["split"] = {"enabled": False}
+        dataset = build_dataset(eval_cfg)
         n = min(len(dataset), args.max_samples) if args.max_samples > 0 else len(dataset)
         all_samples = [dataset[i] for i in range(n)]
 
@@ -275,7 +279,14 @@ def main() -> None:
         else:
             train_samples, eval_samples = _split_by_episode(all_samples, args.heldout_ratio)
 
-    if args.heldout_ratio > 0 and len(eval_samples) > 0:
+    if args.split_path and args.split == "eval" and not eval_samples:
+        raise ValueError(
+            "Eval split produced empty dataset. "
+            "Check split manifest or max_samples."
+        )
+    if args.split_path and args.split == "eval":
+        pool = eval_samples
+    elif args.heldout_ratio > 0 and len(eval_samples) > 0:
         pool = eval_samples
     else:
         pool = eval_samples if eval_samples else train_samples
@@ -314,6 +325,17 @@ def main() -> None:
                 "enabled": normalizer is not None,
                 "stats_path": str(norm_cfg.get("stats_path", "")) if normalizer else None,
             },
+            "split": {
+                "enabled": bool(args.split_path),
+                "path": args.split_path,
+                "name": args.split,
+                "seed": getattr(manifest, "seed", None) if args.split_path else None,
+                "train_episode_ids": manifest.train_episode_ids if args.split_path else None,
+                "eval_episode_ids": manifest.eval_episode_ids if args.split_path else None,
+                "num_train_samples": len(train_samples),
+                "num_eval_samples": len(pool),
+                "stats_source": "train_split_only" if normalizer else None,
+            } if args.split_path else None,
         },
         **report_metrics,
     }

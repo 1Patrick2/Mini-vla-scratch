@@ -15,7 +15,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from mini_vla.datasets.registry import get_dataset_spec
-from mini_vla.datasets.splits import create_episode_split, save_split
+from mini_vla.datasets.splits import (
+    create_episode_split,
+    save_split,
+    validate_split,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -80,6 +84,7 @@ def main() -> None:
         train_ratio=args.train_ratio,
         seed=args.seed,
     )
+    validate_split(split)
 
     out_path = save_split(split, args.output)
     print(f"Split saved to {out_path}")

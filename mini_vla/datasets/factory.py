@@ -114,7 +114,7 @@ def _build_robot_dataset(
         stats = load_stats(stats_path)
         normalizer = ActionNormalizer(stats)
 
-    return BaseRobotDatasetAdapter(
+    dataset = BaseRobotDatasetAdapter(
         base_dataset,
         spec=spec,
         image_size=data_cfg.get("image_size", 64),
@@ -122,6 +122,23 @@ def _build_robot_dataset(
         normalizer=normalizer,
         strict=data_cfg.get("strict", True),
     )
+
+    # Optional history transform
+    hist_cfg = data_cfg.get("history", {})
+    if hist_cfg.get("enabled", False):
+        from mini_vla.datasets.transforms import HistoryDatasetWrapper
+        dataset = HistoryDatasetWrapper(
+            dataset,
+            history_size=hist_cfg.get("history_size", 1),
+            include_prev_state=hist_cfg.get("include_prev_state", True),
+            include_prev_action=hist_cfg.get("include_prev_action", True),
+            first_frame_prev_state=hist_cfg.get("first_frame_prev_state", "current"),
+            first_frame_prev_action=hist_cfg.get("first_frame_prev_action", "zero"),
+            concat_to_state=hist_cfg.get("concat_to_state", False),
+            state_dim=data_cfg.get("state_dim", 2),
+        )
+
+    return dataset
 
 
 def _load_pusht(data_cfg: Dict[str, Any]) -> list[dict]:
