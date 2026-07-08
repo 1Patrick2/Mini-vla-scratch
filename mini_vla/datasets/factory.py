@@ -81,6 +81,26 @@ def _build_robot_dataset(
         else:
             raise ValueError(f"Unsupported loader for robot_dataset: '{loader}'")
 
+    # ── Split-aware filtering ────────────────────────────────────
+    split_cfg = data_cfg.get("split", {})
+    if split_cfg.get("enabled", False):
+        from mini_vla.datasets.splits import filter_samples_by_episode, load_split
+
+        manifest = load_split(split_cfg["path"])
+        split_name = split_cfg.get("name", "train")
+        episode_ids = (
+            manifest.train_episode_ids if split_name == "train"
+            else manifest.eval_episode_ids
+        )
+        n_before = len(base_dataset)
+        base_dataset = filter_samples_by_episode(base_dataset, episode_ids)
+        print(f"[factory] Split '{split_name}': {len(base_dataset)}/{n_before} samples kept")
+        if not base_dataset:
+            raise ValueError(
+                f"Split '{split_name}' produced empty dataset. "
+                f"Available episode ids: {manifest.train_episode_ids + manifest.eval_episode_ids}"
+            )
+
     # Optional normalization
     normalizer = None
     norm_cfg = data_cfg.get("normalization", {})

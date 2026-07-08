@@ -164,11 +164,16 @@ python scripts/evaluate_pusht.py --config configs/train/pusht_debug.yaml --ckpt 
 - MiniVLA beats zero-action and mean-action baselines
 - report.json saved with metrics and baseline comparisons
 
-## Stage 6: Dataset Zoo + Action Normalization ⏳
+## Stage 6: Dataset Zoo + Action Normalization ✅
 
 **Goal:** Extend MiniVLA from single-dataset (PushT) to a multi-dataset
 framework with DatasetSpec, registry, generic adapter, action
 normalization, and ALOHA/LIBERO feasibility inspect.
+
+**Status:** DatasetSpec/Registry, key_utils, generic loader,
+BaseRobotDatasetAdapter, factory robot_dataset, normalization utilities,
+normalized PushT train/eval all implemented and validated.
+ALOHA sim inspect passed (action_dim=14). LIBERO inspect blocked by SSL.
 
 **Key files:**
 - `docs/13_dataset_zoo_and_normalization_plan.md` — design doc
@@ -184,13 +189,36 @@ normalization, and ALOHA/LIBERO feasibility inspect.
 - Stage 5 raw PushT pipeline still works
 - PushT normalized stats compute works
 - Generic inspect_robot_dataset.py works with mock & real PushT
-- ALOHA sim inspect succeeds or gives clear diagnostic
-- LIBERO inspect succeeds or gives clear diagnostic
+- ALOHA sim inspect passes
+- LIBERO inspect fails with clear diagnostic (SSL error)
 - Default pytest does not require network
 
 ---
 
-## Future Directions (V1+)
+## Stage 7: Strict Episode Split + History/Delta BC ⏳
+
+**Goal:** Build a reproducible PushT BC benchmark with strict episode-level
+split, train-only normalization, and history/delta action policy variants.
+
+**Key files:**
+- `mini_vla/datasets/splits.py` — EpisodeSplit manifest
+- `mini_vla/datasets/history_wrapper.py` — temporal context wrapper
+- `scripts/create_episode_split.py` — split manifest CLI
+- `configs/train/pusht_strict_single_frame.yaml` — strict baseline config
+- `configs/train/pusht_strict_history.yaml` — history model config
+- `configs/train/pusht_strict_delta.yaml` — delta action config
+- `docs/15_strict_episode_split_and_history_delta_bc.md` — design doc
+
+**Acceptance:**
+- Split manifest reproducible
+- Train/eval episode ids have no overlap
+- Stats computed from train split only
+- SingleFrame strict train/eval runs
+- History/delta model train/eval runs
+- All baselines in raw action space
+- Stage 5/6 pipelines not broken
+
+---
 
 | Direction | Goal |
 |-----------|------|

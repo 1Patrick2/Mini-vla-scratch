@@ -1,0 +1,30 @@
+base: ../base.yaml
+
+data:
+  dataset_type: robot_dataset
+  dataset_name: pusht
+  loader: lerobot
+  repo_id: lerobot/pusht
+
+  image_size: 64
+  max_text_len: 16
+  batch_size: 4
+  num_workers: 0
+  max_samples: 1024
+  strict: true
+
+  split:
+    enabled: true
+    path: outputs/splits/pusht_seed42_80_20_split.json
+    name: train
+
+  normalization:
+    enabled: true
+    stats_path: outputs/dataset_reports/pusht_strict_train_stats.json
+    normalize_state: true
+    normalize_action: true
+
+train:
+  epochs: 5
+  lr: 0.001
+  device: cpu

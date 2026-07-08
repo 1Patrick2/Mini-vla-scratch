@@ -40,6 +40,10 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Output JSON path.")
     parser.add_argument("--mock-data", action="store_true",
                         help="Use synthetic mock data instead of real dataset.")
+    parser.add_argument("--split-path", default=None,
+                        help="Path to a split manifest JSON for split-aware stats.")
+    parser.add_argument("--split", default="all", choices=["train", "eval", "all"],
+                        help="Which split to compute stats for (default all).")
     return parser
 
 
@@ -74,6 +78,17 @@ def main() -> None:
         except (ImportError, Exception) as e:
             print(f"[ERROR] {e}", file=sys.stderr)
             sys.exit(1)
+
+    # ── Split-aware filtering ───────────────────────────────────
+    if args.split_path and args.split != "all":
+        from mini_vla.datasets.splits import filter_samples_by_episode, load_split
+        manifest = load_split(args.split_path)
+        episode_ids = (
+            manifest.train_episode_ids if args.split == "train"
+            else manifest.eval_episode_ids
+        )
+        samples = filter_samples_by_episode(samples, episode_ids)
+        print(f"Stats computed from {args.split} split: {len(samples)} samples")
 
     stats = compute_stats(
         samples,

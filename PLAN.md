@@ -19,9 +19,10 @@ image + instruction + state → action
 | Stage 3 | Behavior Cloning 训练闭环 | ✅ 完成 |
 | Stage 4 | 推理 + 可视化 (Policy Inference) | ✅ 完成 |
 | Stage 5 | PushT Dataset Evaluation | ✅ 完成 |
-| Stage 6 | Dataset Zoo + Action Normalization | ⏳ |
-| Stage 7 | Better BC Training + Temporal Context | 🔮 |
+| Stage 6 | Dataset Zoo + Action Normalization | ✅ 完成 |
+| Stage 7 | Strict Episode Split + History/Delta BC | ⏳ |
 | Stage 8 | ACT-lite / Action Chunking | 🔮 |
+| Stage 9 | Export / Deployment | 🔮 |
 | Stage 9 | Export / Deployment | 🔮 |
 
 ---
@@ -387,7 +388,7 @@ python scripts/evaluate_pusht.py \\
 
 ---
 
-## Stage 6：Dataset Zoo + Action Normalization ⏳
+## Stage 6：Dataset Zoo + Action Normalization ✅
 
 ### 目标
 

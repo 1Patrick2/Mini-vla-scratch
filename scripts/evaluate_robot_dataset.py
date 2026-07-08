@@ -59,6 +59,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--mock-data", action="store_true",
                         help="Use synthetic mock data.")
+    parser.add_argument("--split-path", default=None,
+                        help="Path to a split manifest JSON.")
+    parser.add_argument("--split", default="eval", choices=["train", "eval", "all"],
+                        help="Which split to evaluate (default eval).")
     return parser
 
 
@@ -255,7 +259,21 @@ def main() -> None:
         dataset = build_dataset(data_cfg)
         n = min(len(dataset), args.max_samples) if args.max_samples > 0 else len(dataset)
         all_samples = [dataset[i] for i in range(n)]
-        train_samples, eval_samples = _split_by_episode(all_samples, args.heldout_ratio)
+
+        if args.split_path:
+            from mini_vla.datasets.splits import filter_samples_by_episode, load_split
+            manifest = load_split(args.split_path)
+            if args.split == "train":
+                eval_samples = filter_samples_by_episode(all_samples, manifest.train_episode_ids)
+                train_samples = []
+            elif args.split == "eval":
+                eval_samples = filter_samples_by_episode(all_samples, manifest.eval_episode_ids)
+                train_samples = filter_samples_by_episode(all_samples, manifest.train_episode_ids)
+            else:
+                eval_samples = all_samples
+                train_samples = all_samples
+        else:
+            train_samples, eval_samples = _split_by_episode(all_samples, args.heldout_ratio)
 
     if args.heldout_ratio > 0 and len(eval_samples) > 0:
         pool = eval_samples
