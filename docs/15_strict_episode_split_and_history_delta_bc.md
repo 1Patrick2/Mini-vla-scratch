@@ -14,8 +14,8 @@ Stage 6 proved normalized PushT pipeline works. Stage 7 moves from
 
 - Dataset: `lerobot/pusht` (1024 samples)
 - Split: episode-level, 80/20, seed 42
-- Train episodes: ~819 samples
-- Eval episodes: ~205 samples (strictly unseen during training)
+- Train split: 6 episodes, 745 samples
+- Eval split: 2 episodes, 279 samples (strictly unseen during training)
 - Normalization stats: computed from **train split only**
 
 ## Models
@@ -37,19 +37,24 @@ All metrics in **raw action space** on held-out episodes (strict split).
 | Previous Action | 6.67 | — | — | — | — | Strong temporal baseline |
 | SingleFrame | 19.51 | 24.23 | ✅ | ✅ | ❌ | Single-step BC |
 | History | 11.02 | 15.82 | ✅ | ✅ | ❌ | +prev state/action |
-| DeltaAction | — | — | — | — | — | Pending Stage 7-E |
+| DeltaAction | **7.35** | **13.51** | ✅ | ✅ | ❌ | Residual prediction |
 
 ### Interpretation
 
-History BC reduces raw MAE by **43.5%** compared to SingleFrame
-(from 19.51 to 11.02), demonstrating that previous state/action
-provides useful temporal context.
+**SingleFrame → History**: Raw MAE improved from 19.51 to 11.02
+(**43.5% reduction**), proving that adding previous state/action provides
+useful temporal context for action prediction.
 
-However, History still does not outperform the previous-action baseline
-(6.67), indicating that PushT action continuity remains a strong prior.
-This motivates Delta / residual action prediction in Stage 7-E, where
-the model learns corrections to the previous action rather than
-predicting the absolute action.
+**History → DeltaAction**: Raw MAE further improved from 11.02 to 7.35
+(**33.3% reduction**), demonstrating that residual/delta action prediction
+is more effective than absolute action prediction when strong temporal
+continuity exists. DeltaAction substantially narrows the gap to the
+previous-action baseline (6.67).
+
+The previous-action baseline remains a very strong prior for PushT
+due to the dataset's continuous, smooth motion at 10 FPS.  Even so,
+DeltaAction's MAE of 7.35 is only 10% above this strong baseline,
+compared to History's 65% above and SingleFrame's 193% above.
 
 ## Commands
 
