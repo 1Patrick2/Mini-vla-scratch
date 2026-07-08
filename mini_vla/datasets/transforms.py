@@ -1,73 +1,25 @@
-"""Text tokenisation and dataset transform utilities."""
+"""Dataset transforms — history, delta, etc.
+
+Each transform wraps an existing dataset and adds new fields.
+Transforms are composable and can be chained.
+
+Tokenization utilities have been moved to ``tokenization.py``.
+"""
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, Sequence
 
 import torch
 
-# Minimal vocabulary covering Stage 1 instructions.
-# Extend as needed when new instructions are added.
-VOCAB: dict[str, int] = {
-    "<pad>": 0,
-    "<unk>": 1,
-    "move": 2,
-    "red": 3,
-    "object": 4,
-    "to": 5,
-    "target": 6,
-    "left": 7,
-    "right": 8,
-    "up": 9,
-    "down": 10,
-}
+from mini_vla.datasets.tokenization import (  # noqa: F401
+    ID_TO_TOKEN,
+    VOCAB,
+    build_attention_mask,
+    decode,
+    tokenize,
+)
 
-# Reverse mapping for debugging / decoding
-ID_TO_TOKEN: dict[int, str] = {v: k for k, v in VOCAB.items()}
-
-
-def tokenize(text: str, max_len: Optional[int] = None) -> List[int]:
-    """Convert a text instruction to a list of token IDs.
-
-    Unknown words are mapped to ``<unk>`` (1).
-    If *max_len* is given, the sequence is padded or truncated.
-    """
-    tokens = [VOCAB.get(word, VOCAB["<unk>"]) for word in text.strip().split()]
-    if max_len is not None:
-        if len(tokens) < max_len:
-            tokens += [VOCAB["<pad>"]] * (max_len - len(tokens))
-        else:
-            tokens = tokens[:max_len]
-    return tokens
-
-
-def decode(tokens: List[int]) -> str:
-    """Convert token IDs back to a space-separated string (for debugging)."""
-    return " ".join(ID_TO_TOKEN.get(t, "<unk>") for t in tokens)
-
-
-__all__ = [
-    "VOCAB",
-    "ID_TO_TOKEN",
-    "tokenize",
-    "decode",
-    "build_attention_mask",
-]
-
-def build_attention_mask(input_ids: List[int], pad_token_id: int = 0) -> List[int]:
-    """Build attention mask from token IDs: 1 for non-pad tokens, 0 for pad.
-
-    Args:
-        input_ids: Token ID sequence (padded or truncated).
-        pad_token_id: The ID used for padding (default 0).
-
-    Returns:
-        attention_mask: List[int] of same length as input_ids.
-    """
-    return [1 if tok != pad_token_id else 0 for tok in input_ids]
-
-
-# ── History / temporal context transforms ──────────────────────────
 
 class HistoryDatasetWrapper:
     """Wraps a dataset and adds previous-frame state/action fields.
@@ -109,7 +61,7 @@ class HistoryDatasetWrapper:
         self.state_dim = state_dim
         self._index = self._build_index()
 
-    def _build_index(self) -> List[int]:
+    def _build_index(self) -> list[int]:
         indexed = []
         for i in range(len(self.dataset)):
             s = self.dataset[i]
@@ -128,7 +80,12 @@ class HistoryDatasetWrapper:
         return len(self.dataset)
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
-        sample = self.dataset[self._index[index]]
+        base = self.dataset[self._index[index]]
+        # Deep-copy tensors to avoid in-place pollution of underlying dataset
+        sample: Dict[str, Any] = {
+            k: v.clone() if isinstance(v, torch.Tensor) else v
+            for k, v in base.items()
+        }
         current_ep = sample.get("episode_index")
         is_first = True
         prev_pos = None
@@ -143,7 +100,6 @@ class HistoryDatasetWrapper:
                 prev_pos = prev_idx
                 is_first = False
 
-        # Determine prev values
         if prev_pos is not None:
             ps = self.dataset[prev_pos]
             p_state_r = ps.get("state_raw", ps["state"]).clone()

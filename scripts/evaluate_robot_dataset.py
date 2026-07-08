@@ -49,8 +49,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--loader", default=None,
                         choices=["lerobot", "hf_datasets"],
                         help="Data loader backend.")
-    parser.add_argument("--max-samples", type=int, default=256,
-                        help="Max samples to evaluate.")
+    parser.add_argument("--max-samples", type=int, default=0,
+                        help="Max samples to evaluate (default 0 = all).")
     parser.add_argument("--heldout-ratio", type=float, default=0.2,
                         help="Fraction of episodes to hold out.")
     parser.add_argument("--output", default="outputs/eval/robot_report.json",

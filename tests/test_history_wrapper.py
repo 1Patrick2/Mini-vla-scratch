@@ -92,3 +92,44 @@ class TestHistoryDatasetWrapper:
         assert torch.allclose(s["state"][:2], torch.tensor([2.0, 2.0]))
         assert torch.allclose(s["state"][2:4], torch.tensor([1.0, 1.0]))
         assert torch.allclose(s["state"][4:], torch.tensor([10.0, 10.0]))
+
+    def test_normalized_fields_correct(self):
+        """When state_normalized/action_normalized exist, prev_* use them."""
+        frames = [
+            {"episode_index": 0, "frame_index": 0,
+             "state": torch.tensor([1.0, 1.0]),
+             "action": torch.tensor([10.0, 10.0]),
+             "state_normalized": torch.tensor([-0.5, -0.5]),
+             "action_normalized": torch.tensor([-1.0, -1.0]),
+             "state_raw": torch.tensor([1.0, 1.0]),
+             "action_raw": torch.tensor([10.0, 10.0])},
+            {"episode_index": 0, "frame_index": 1,
+             "state": torch.tensor([2.0, 2.0]),
+             "action": torch.tensor([20.0, 20.0]),
+             "state_normalized": torch.tensor([0.5, 0.5]),
+             "action_normalized": torch.tensor([1.0, 1.0]),
+             "state_raw": torch.tensor([2.0, 2.0]),
+             "action_raw": torch.tensor([20.0, 20.0])},
+        ]
+        wrapper = HistoryDatasetWrapper(frames)
+        s = wrapper[1]  # ep0 f1
+        # prev fields should use normalized space
+        assert torch.allclose(s["prev_state"], torch.tensor([-0.5, -0.5]))
+        assert torch.allclose(s["prev_action"], torch.tensor([-1.0, -1.0]))
+        # raw fields preserved
+        assert torch.allclose(s["prev_state_raw"], torch.tensor([1.0, 1.0]))
+        assert torch.allclose(s["prev_action_raw"], torch.tensor([10.0, 10.0]))
+
+    def test_repeat_access_no_mutation(self):
+        """Accessing the same index multiple times should not change state shape."""
+        frames = _make_frames()
+        wrapper = HistoryDatasetWrapper(frames, concat_to_state=True)
+        s1 = wrapper[1]
+        s2 = wrapper[1]
+        s3 = wrapper[1]
+        assert s1["state"].shape == (6,), "First access should be 6-dim"
+        assert s2["state"].shape == (6,), "Second access should still be 6-dim"
+        assert s3["state"].shape == (6,), "Third access should still be 6-dim"
+        # Values should be identical across accesses
+        assert torch.allclose(s1["state"], s2["state"])
+        assert torch.allclose(s2["state"], s3["state"])

@@ -103,6 +103,22 @@ def main() -> None:
     print(f"  action_mean: {stats.action_mean.tolist()}")
     print(f"  action_std:  {stats.action_std.tolist()}")
 
+    # Save metadata sidecar if split-aware
+    if args.split_path:
+        import json
+        meta = {
+            "dataset_name": args.dataset_name,
+            "repo_id": args.repo_id or spec.repo_id,
+            "split_path": args.split_path,
+            "split": args.split,
+            "stats_source": "train_split_only" if args.split == "train" else f"split_{args.split}",
+            "num_samples": len(samples),
+            "max_samples": args.max_samples,
+        }
+        meta_path = out_path.with_suffix(".meta.json")
+        meta_path.write_text(json.dumps(meta, indent=2))
+        print(f"Meta saved to {meta_path}")
+
 
 if __name__ == "__main__":
     main()
