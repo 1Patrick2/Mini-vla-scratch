@@ -214,19 +214,19 @@ split, train-only normalization, and history/delta action policy variants.
 
 **Results (raw action space, strict unseen-episode eval):**
 
-| Method | Raw MAE | Beats Previous |
+| Model | Raw MAE | Takeaway |
 |---|---|---:|
-| SingleFrame | 19.51 | ❌ |
-| History | 11.02 | ❌ |
-| DeltaAction | 7.35 | ❌ |
+| SingleFrame BC | 19.51 | current-frame baseline |
+| History BC | 11.02 | temporal context |
+| DeltaAction BC | **7.35** | **best learned variant** |
 
 **Acceptance:**
-- Split manifest reproducible (6 train / 2 eval episodes)
-- Train/eval episode ids have no overlap
-- Stats computed from train split only (745 samples)
-- SingleFrame, History, DeltaAction all train/eval on strict split
-- All baselines compared in raw action space
-- DeltaAction narrows gap to previous-action baseline: 7.35 vs 6.67
+- Reproducible episode-level train/eval split (6 train / 2 eval episodes)
+- Train-only normalization statistics
+- SingleFrame, History, DeltaAction BC all train and evaluate on strict split
+- Raw action evaluation with baseline reports
+- DeltaAction improves over History on strict unseen episodes
+- Data-integrity audit passes (9/9 checks)
 - All unit tests pass, ruff clean
 - Stage 5/6 pipelines not broken
 

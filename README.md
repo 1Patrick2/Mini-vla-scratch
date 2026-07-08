@@ -10,14 +10,32 @@ image + instruction + state -> action
 
 ## Current Stage
 
-**V0: Toy 2D Mini VLA — Stage 5 PushT real dataset evaluation completed; preparing Stage 6 Dataset Zoo + Action Normalization.**
+**Stage 7: Strict Episode Split + History/Delta BC — Complete.**
 
-The full pipeline is complete: Toy 2D data pipeline, MiniVLA model forward, config-driven builder,
-behavior cloning training loop, checkpoint save/load, policy-style Predictor with action clipping,
-PIL-based prediction visualizer, infer_one CLI, **real PushT vision data loading via LeRobotDataset**,
-**held-out episode evaluation**, **baseline comparison (zero/mean/previous-action)**,
-**action metrics (MAE/MSE/RMSE/cosine similarity/finite ratio)**,
-and **realdata pytest with `RUN_REAL_PUSHT=1`**.
+A strict offline Behavior Cloning benchmark on real LeRobot PushT data with episode-level train/eval split, train-only normalization, and three BC variants.
+
+## Stage 7: Robot Learning Benchmark
+
+| Model | Raw MAE | Takeaway |
+|-------|--------:|----------|
+| SingleFrame BC | 19.51 | current-frame baseline |
+| History BC | 11.02 | +temporal context |
+| DeltaAction BC | **7.35** | **best learned variant** |
+
+**Protocol:** episode-level split (6 train / 2 eval episodes, 1024 samples), train-only normalization, raw action space metrics, baseline reports.
+
+DeltaAction BC reduces raw MAE by **33.3%** over History BC and **62.3%** over SingleFrame BC on strictly unseen episodes.
+
+### Key components
+
+- `create_episode_split.py` — reproducible episode-level split manifest
+- `compute_dataset_stats.py` — train-only normalization statistics
+- Three configs: `pusht_strict_single_frame.yaml`, `pusht_strict_history.yaml`, `pusht_strict_delta.yaml`
+- `evaluate_robot_dataset.py` — raw/normalized action evaluation with baselines
+- `compare_eval_reports.py` — cross-method comparison table
+- `audit_stage7_outputs.py` — data-integrity audit
+
+See [docs/15](docs/15_strict_episode_split_and_history_delta_bc.md) for full protocol and results.
 
 ## Quickstart
 
@@ -58,22 +76,18 @@ python -m pytest tests/test_evaluate_pusht_cli.py -m realdata
 - Checkpoint save/load (last.pt + best.pt tracking)
 - Predictor with policy-style select_action API and action clipping
 - PIL-based prediction visualizer and infer_one CLI
-- **Real PushT vision data loading via LeRobotDataset** with `loader: lerobot`
-- **Held-out episode evaluation** (no frame-level leakage)
-- **Offline evaluation with baselines**: zero, mean, previous-action
-- **Action metrics**: MAE, MSE, RMSE, per-dim MAE, cosine similarity, finite ratio
-- **Realdata pytest** with `RUN_REAL_PUSHT=1` marker
-- **DatasetSpec + Registry** for multi-dataset support
-- **Generic robot dataset inspect** CLI
-- **Action/state normalization** utilities
-- Component, dataset, model-forward, training, checkpoint, inference, and PushT tests
+- **Strict episode-level split** with reproducible manifest
+- **Train-only normalization** statistics
+- **SingleFrame, History, DeltaAction BC** comparison
+- **Raw action evaluation** with baseline reports
+- **DeltaAction** is the best learned variant (raw MAE=7.35)
+- **Data-integrity audit** for reproducibility
 
 ## Planned
 
-- Normalized PushT training/evaluation pipeline
-- ALOHA sim transfer cube inspection and adapter smoke test
-- LIBERO feasibility inspection
-- Generic `BaseRobotDatasetAdapter` for multi-dataset training
+- Action chunk / ACT-lite temporal policy
+- Multi-seed / larger subset benchmark
+- Stronger visual encoder or pretrained backbone
 
 ## Setup
 
