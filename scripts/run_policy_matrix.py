@@ -27,7 +27,7 @@ SUMMARY_FILENAME = "stage8_matrix_summary"
 def _load_json(path: str) -> Optional[Dict[str, Any]]:
     p = Path(path)
     if p.exists():
-        return json.loads(p.read_text())
+        return json.loads(p.read_text(encoding="utf-8"))
     return None
 
 
@@ -38,6 +38,18 @@ def _status_icon(status: str) -> str:
 def _get_metric(report: Optional[Dict], key: str) -> str:
     if report is None:
         return "—"
+    # ActionChunk reports store metrics in chunk_metrics
+    cm = report.get("chunk_metrics", {})
+    if cm:
+        if key == "mae":
+            val = cm.get("mae_first")
+        elif key == "rmse":
+            val = cm.get("rmse_all")
+        else:
+            val = cm.get(key)
+        if val is not None:
+            return f"{val:.4f}"
+    # Standard reports store metrics in raw_action_metrics
     m = report.get("raw_action_metrics", {})
     val = m.get(key)
     return f"{val:.4f}" if val is not None else "—"
@@ -63,7 +75,7 @@ def run_matrix(
     if yaml is None:
         raise ImportError("PyYAML is required to read matrix config. pip install pyyaml")
 
-    cfg = yaml.safe_load(Path(config_path).read_text())
+    cfg = yaml.safe_load(Path(config_path).read_text(encoding="utf-8"))
     entries = cfg.get("matrix", [])
 
     rows: List[Dict[str, Any]] = []
@@ -121,14 +133,17 @@ def run_matrix(
 
     # Write output files
     json_path = out_dir / f"{SUMMARY_FILENAME}.json"
-    json_path.write_text(json.dumps(summary, indent=2))
+    json_path.write_text(
+        json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8",
+    )
     print(f"Summary saved to {json_path}")
 
     md_path = out_dir / f"{SUMMARY_FILENAME}.md"
-    md_path.write_text(summary["markdown"])
+    md_path.write_text(summary["markdown"], encoding="utf-8")
     print(f"Markdown saved to {md_path}")
 
-    print(f"\n{summary['markdown']}")
+    # Print ASCII-safe summary (avoid UnicodeEncodeError on Windows GBK terminals)
+    print(f"\nGenerated {len(rows)} matrix entries. Full summary at {json_path}")
     return summary
 
 

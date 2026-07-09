@@ -111,16 +111,16 @@ def main() -> None:
     predictions: List[Dict[str, Any]] = []
 
     for sample in pool:
-        pred_out = predictor.predict(sample)  # [action_dim] or [H*action_dim]
         # Get gt action_chunk
         gt_chunk = sample.get("action_chunk")
         if gt_chunk is None:
-            # Fall back to single action if no chunk wrapper applied
-            gt_chunk = sample.get("action", torch.zeros(pred_out.shape[0])).unsqueeze(0)
+            gt_chunk = sample.get("action", torch.zeros(2)).unsqueeze(0)
 
-        gt_chunks.append(gt_chunk.cpu())
+        gt_chunks.append(
+            gt_chunk.cpu() if isinstance(gt_chunk, torch.Tensor)
+            else torch.tensor(gt_chunk)
+        )
 
-        # Predictor returns single action for action_chunk_bc (first step)
         # For full chunk we need to run predict_action through the policy
         # Build a batch of size 1
         batch = {

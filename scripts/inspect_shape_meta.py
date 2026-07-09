@@ -64,13 +64,12 @@ def _infer_dim(x: Any) -> int:
 def _is_image_like(v: Any) -> bool:
     """Check whether *v* is a plausible image tensor/array.
 
-    Supports ``np.ndarray`` HWC/CHW and ``torch.Tensor`` CHW/HWC with
-    1 or 3 channels.
+    Supports ``np.ndarray`` and ``torch.Tensor`` in both CHW (``shape[0]``
+    in 1 or 3) and HWC (``shape[-1]`` in 1 or 3) layouts.
     """
-    if isinstance(v, np.ndarray) and v.ndim == 3 and v.shape[-1] in (1, 3):
-        return True
-    if isinstance(v, torch.Tensor) and v.ndim == 3 and v.shape[0] in (1, 3):
-        return True
+    if isinstance(v, (np.ndarray, torch.Tensor)) and v.ndim == 3:
+        if v.shape[0] in (1, 3) or v.shape[-1] in (1, 3):
+            return True
     return False
 
 

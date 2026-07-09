@@ -55,6 +55,14 @@ class TestImageInference:
         t = torch.randn(1, 224, 224)
         assert t.ndim == 3 and t.shape[0] == 1
 
+    def test_numpy_chw(self):
+        arr = np.random.randn(3, 224, 224).astype(np.uint8)
+        assert arr.ndim == 3 and arr.shape[0] == 3
+
+    def test_torch_hwc(self):
+        t = torch.randn(224, 224, 3)
+        assert t.ndim == 3 and t.shape[-1] == 3
+
 
 class TestAlohaSpec:
     def test_aloha_spec_exists(self):
