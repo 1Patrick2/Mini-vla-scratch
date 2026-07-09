@@ -1,8 +1,11 @@
 # ALOHA sim History BC smoke config
 # NOTE: state_dim/action_dim are placeholders — verify via inspect_shape_meta.py.
 # CPU-friendly: 1 epoch, 128 max_samples, small batch.
-dataset:
-  name: aloha_sim_transfer_cube
+base: ../../base.yaml
+
+data:
+  dataset_type: robot_dataset
+  dataset_name: aloha_sim_transfer_cube
   repo_id: lerobot/aloha_sim_transfer_cube_scripted
   loader: lerobot
   max_samples: 128
@@ -26,8 +29,11 @@ shape_meta:
     dim: 14
 
 model:
+  name: mini_vla
   state_dim: 42
   action_dim: 14
+  state_encoder:
+    input_dim: 42
 
 train:
   epochs: 1

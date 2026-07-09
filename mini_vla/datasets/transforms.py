@@ -210,33 +210,47 @@ class ActionChunkTargetWrapper:
             )
         self.dataset = dataset
         self.action_horizon = action_horizon
-        self._valid_indices = self._build_valid_indices()
+        self._valid_chunks = self._build_valid_chunks()
 
-    def _build_valid_indices(self) -> list[int]:
-        """Build a list of dataset indices that have enough future frames."""
+    def _get_episode_id(self, i: int) -> int:
+        s = self.dataset[i]
+        ep = s.get("episode_index")
+        if isinstance(ep, torch.Tensor):
+            ep = ep.item()
+        return int(ep) if ep is not None else 0
+
+    def _build_valid_chunks(self) -> list[list[int]]:
+        """Build a list of chunk index lists, one per valid chunk start.
+
+        Each chunk is a list of ``H`` dataset indices that are consecutive
+        within the same episode, ordered by ``frame_index``.
+        """
         # Group indices by episode
         ep_to_indices: Dict[int, list[int]] = {}
         for i in range(len(self.dataset)):
-            s = self.dataset[i]
-            ep = s.get("episode_index")
-            if isinstance(ep, torch.Tensor):
-                ep = ep.item()
-            ep_int = int(ep) if ep is not None else 0
+            ep_int = self._get_episode_id(i)
             ep_to_indices.setdefault(ep_int, []).append(i)
 
-        valid: list[int] = []
+        chunks: list[list[int]] = []
+        H = self.action_horizon
         for ep_id in sorted(ep_to_indices.keys()):
             indices = ep_to_indices[ep_id]
-            # Only keep starts that have H consecutive frames in this episode
-            for j in range(len(indices) - self.action_horizon + 1):
-                valid.append(indices[j])
-        return valid
+            # Sort within episode by frame_index for safety
+            indices.sort(key=lambda idx: (
+                self.dataset[idx].get("frame_index")
+                if isinstance(self.dataset[idx].get("frame_index"), (int, float))
+                else idx
+            ))
+            for j in range(len(indices) - H + 1):
+                chunks.append(indices[j:j + H])
+        return chunks
 
     def __len__(self) -> int:
-        return len(self._valid_indices)
+        return len(self._valid_chunks)
 
     def __getitem__(self, idx: int) -> Dict[str, Any]:
-        base_idx = self._valid_indices[idx]
+        chunk_indices = self._valid_chunks[idx]
+        base_idx = chunk_indices[0]
         base = self.dataset[base_idx]
         H = self.action_horizon
 
@@ -246,10 +260,10 @@ class ActionChunkTargetWrapper:
             for k, v in base.items()
         }
 
-        # Build chunk targets
+        # Build chunk targets from the stored index sequence
         chunk_list: list[torch.Tensor] = []
-        for step in range(H):
-            s = self.dataset[base_idx + step]
+        for ci in chunk_indices:
+            s = self.dataset[ci]
             act = s["action"]
             chunk_list.append(act if isinstance(act, torch.Tensor) else torch.tensor(act))
 
@@ -259,12 +273,10 @@ class ActionChunkTargetWrapper:
 
         # Also build raw/normalized chunks if available
         if "action_raw" in base:
-            raw_list = [self.dataset[base_idx + step]["action_raw"] for step in range(H)]
+            raw_list = [self.dataset[ci]["action_raw"] for ci in chunk_indices]
             sample["action_chunk_raw"] = torch.stack(raw_list)
         if "action_normalized" in base:
-            norm_list = [
-                self.dataset[base_idx + step]["action_normalized"] for step in range(H)
-            ]
+            norm_list = [self.dataset[ci]["action_normalized"] for ci in chunk_indices]
             sample["action_chunk_normalized"] = torch.stack(norm_list)
 
         return sample

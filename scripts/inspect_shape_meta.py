@@ -47,11 +47,38 @@ def _load_samples(
         raise ValueError(f"Unsupported loader: '{loader}'")
 
 
+def _infer_dim(x: Any) -> int:
+    """Safely get the first dimension of state/action-like data.
+
+    Handles ``torch.Tensor``, ``np.ndarray``, and ``list``.
+    """
+    if isinstance(x, torch.Tensor):
+        return int(x.numel()) if x.ndim == 1 else int(x.shape[-1])
+    if isinstance(x, np.ndarray):
+        return int(x.size) if x.ndim == 1 else int(x.shape[-1])
+    if isinstance(x, (list, tuple)):
+        return len(x)
+    return 0
+
+
+def _is_image_like(v: Any) -> bool:
+    """Check whether *v* is a plausible image tensor/array.
+
+    Supports ``np.ndarray`` HWC/CHW and ``torch.Tensor`` CHW/HWC with
+    1 or 3 channels.
+    """
+    if isinstance(v, np.ndarray) and v.ndim == 3 and v.shape[-1] in (1, 3):
+        return True
+    if isinstance(v, torch.Tensor) and v.ndim == 3 and v.shape[0] in (1, 3):
+        return True
+    return False
+
+
 def _infer_keys(sample: Dict[str, Any]) -> Dict[str, str]:
     """Infer image/state/action/language keys from a sample dict."""
     keys: Dict[str, str] = {}
     for k, v in sample.items():
-        if isinstance(v, np.ndarray) and v.ndim == 3 and v.shape[-1] in (1, 3):
+        if _is_image_like(v):
             keys["image_key"] = k
         elif k.endswith(".state") or k == "state":
             keys["state_key"] = k
@@ -85,20 +112,9 @@ def inspect_shape_meta(
     action_key = keys.get("action_key", "action")
     image_key = keys.get("image_key")
 
-    # Determine dimensions from the first sample
-    state_val = first.get(state_key)
-    action_val = first.get(action_key)
-
-    state_dim = (
-        int(state_val.shape[0])
-        if isinstance(state_val, (np.ndarray, torch.Tensor, list))
-        else 0
-    )
-    action_dim = (
-        int(action_val.shape[0])
-        if isinstance(action_val, (np.ndarray, torch.Tensor, list))
-        else 0
-    )
+    # Determine dimensions from the first sample using safe _infer_dim
+    state_dim = _infer_dim(first.get(state_key))
+    action_dim = _infer_dim(first.get(action_key))
 
     language_key = keys.get("language_key")
 

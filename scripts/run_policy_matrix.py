@@ -54,6 +54,12 @@ def run_matrix(
     mode: str = "report-only",
     output_dir: str = "outputs/matrix",
 ) -> Dict[str, Any]:
+    if mode == "run-smoke":
+        raise NotImplementedError(
+            "run-smoke mode is planned but not implemented in Stage 8.4. "
+            "Use --mode report-only to read existing reports."
+        )
+
     if yaml is None:
         raise ImportError("PyYAML is required to read matrix config. pip install pyyaml")
 

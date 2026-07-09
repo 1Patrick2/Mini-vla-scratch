@@ -67,7 +67,7 @@ class TestActionChunkTargetWrapper:
         # ep has 5 frames -> valid starts: [0, 1, 2] (3 valid)
         assert len(wrapper) == 3
         # original indices 3,4 should be dropped
-        valid_indices = set(wrapper._valid_indices)
+        valid_indices = {c[0] for c in wrapper._valid_chunks}
         assert 3 not in valid_indices
         assert 4 not in valid_indices
 
@@ -81,3 +81,27 @@ class TestActionChunkTargetWrapper:
         import pytest
         with pytest.raises(ValueError, match="action_horizon"):
             ActionChunkTargetWrapper(ds, action_horizon=0)
+
+    def test_non_contiguous_indices_safe(self):
+        """Interleaved episode indices must not cause cross-episode chunks."""
+        samples = [
+            {"episode_index": 0, "frame_index": 0, "action": torch.tensor([1.0, 1.0]),
+             "state": torch.randn(2)},
+            {"episode_index": 1, "frame_index": 0, "action": torch.tensor([10.0, 10.0]),
+             "state": torch.randn(2)},
+            {"episode_index": 0, "frame_index": 1, "action": torch.tensor([2.0, 2.0]),
+             "state": torch.randn(2)},
+            {"episode_index": 1, "frame_index": 1, "action": torch.tensor([20.0, 20.0]),
+             "state": torch.randn(2)},
+            {"episode_index": 0, "frame_index": 2, "action": torch.tensor([3.0, 3.0]),
+             "state": torch.randn(2)},
+        ]
+        wrapper = ActionChunkTargetWrapper(samples, action_horizon=2)
+        # Ep 0 has 3 frames (indices 0,2,4) -> 2 chunks
+        # Ep 1 has 2 frames (indices 1,3) -> 1 chunk
+        # Total: 3 chunks
+        assert len(wrapper) == 3
+        # Verify action values from chunk 0: should be ep 0 frames [0,2] -> [1,1],[2,2]
+        chunk0 = wrapper[0]["action_chunk"]
+        assert chunk0[0][0].item() == 1.0
+        assert chunk0[1][0].item() == 2.0

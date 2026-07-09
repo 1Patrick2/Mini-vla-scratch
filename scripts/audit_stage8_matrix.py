@@ -1,21 +1,18 @@
 """Audit Stage 8 matrix outputs for completeness.
 
-Checks:
-1. Stage 7 audit still passes
-2. Matrix config is readable
-3. PushT full benchmark reports (3) exist
-4. ActionChunk smoke report exists
-5. ALOHA smoke reports (3) exist
-6. ALOHA entries are marked as smoke, not full_benchmark
-7. LIBERO is feasibility only
-8. Matrix summary JSON and MD exist
+Supports two modes:
+- ``structure-only`` (default): checks config structure, entry labels,
+  but does NOT require report files to exist.
+- ``full``: also requires all smoke reports and matrix summary files.
 
 Usage:
-    python scripts/audit_stage8_matrix.py
+    python scripts/audit_stage8_matrix.py --mode structure-only
+    python scripts/audit_stage8_matrix.py --mode full
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import subprocess
 import sys
@@ -47,10 +44,17 @@ def _load_json(path: Path) -> Dict[str, Any]:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Audit Stage 8 matrix outputs.")
+    parser.add_argument("--mode", default="structure-only",
+                        choices=["structure-only", "full"],
+                        help="Audit mode: structure-only checks config, full also checks files")
+    args = parser.parse_args()
+    mode = args.mode
+
     failures = 0
 
     print("=" * 60)
-    print("  Stage 8 Matrix Audit")
+    print(f"  Stage 8 Matrix Audit (mode: {mode})")
     print("=" * 60)
 
     # ── 1. Stage 7 audit still passes ──────────────────────────────────
@@ -73,45 +77,25 @@ def main() -> None:
     else:
         entries = []
 
-    # ── 3. PushT full benchmark reports exist ──────────────────────────
-    pusht_reports = [
+    # ── 3. PushT full benchmark entries exist in config ────────────────
+    pusht_full = [
         e for e in entries
         if e.get("status") == "full_benchmark" and "pusht" in e.get("dataset", "")
     ]
-    for entry in pusht_reports:
-        rp = entry.get("report", "")
-        report_path = Path(rp) if rp else None
-        exists = report_path and report_path.exists()
-        failures += _check(
-            exists,
-            f"PushT report exists: {entry['policy']}",
-            str(report_path) if report_path else "",
-        )
+    failures += _check(
+        len(pusht_full) >= 3,
+        f"PushT full benchmark entries in config: {len(pusht_full)}",
+    )
 
-    # ── 4. PushT action_chunk report exists ────────────────────────────
+    # ── 4. ActionChunk entry exists ────────────────────────────────────
     ac_entries = [e for e in entries if e.get("policy") == "action_chunk_bc"]
-    if ac_entries:
-        rp = ac_entries[0].get("report", "")
-        report_path = Path(rp) if rp else None
-        exists = report_path and report_path.exists()
-        failures += _check(
-            exists,
-            f"ActionChunk smoke report exists: {rp}",
-        )
+    failures += _check(
+        len(ac_entries) >= 1,
+        "ActionChunk entry exists in config",
+    )
 
-    # ── 5. ALOHA smoke reports exist ───────────────────────────────────
+    # ── 5. ALOHA entries are marked smoke, not full_benchmark ──────────
     aloha_entries = [e for e in entries if "aloha" in e.get("dataset", "").lower()]
-    for entry in aloha_entries:
-        rp = entry.get("report", "")
-        report_path = Path(rp) if rp else None
-        exists = report_path and report_path.exists()
-        failures += _check(
-            exists or entry.get("status") != "smoke",
-            f"ALOHA report {'exists' if exists else 'missing'}: {entry['policy']}",
-            str(report_path) if report_path else "",
-        )
-
-    # ── 6. ALOHA entries must be smoke, not full_benchmark ─────────────
     for entry in aloha_entries:
         failures += _check(
             entry.get("status") != "full_benchmark",
@@ -119,7 +103,7 @@ def main() -> None:
             f"status={entry.get('status')}",
         )
 
-    # ── 7. LIBERO is feasibility only ──────────────────────────────────
+    # ── 6. LIBERO is feasibility only ──────────────────────────────────
     libero = [e for e in entries if "libero" in e.get("dataset", "").lower()]
     for entry in libero:
         failures += _check(
@@ -128,9 +112,22 @@ def main() -> None:
             f"status={entry.get('status')}",
         )
 
-    # ── 8. Matrix summary files exist ──────────────────────────────────
-    failures += _check(SUMMARY_JSON.exists(), "Matrix summary JSON exists")
-    failures += _check(SUMMARY_MD.exists(), "Matrix summary MD exists")
+    # ── 7. Full-mode checks: report files must exist ───────────────────
+    if mode == "full":
+        for entry in entries:
+            rp = entry.get("report", "")
+            if not rp:
+                continue
+            report_path = Path(rp)
+            exists = report_path.exists()
+            failures += _check(
+                exists,
+                f"Report exists: {entry['dataset']} / {entry['policy']}",
+                str(report_path) if not exists else "",
+            )
+
+        failures += _check(SUMMARY_JSON.exists(), "Matrix summary JSON exists")
+        failures += _check(SUMMARY_MD.exists(), "Matrix summary MD exists")
 
     # ── Summary ────────────────────────────────────────────────────────
     print("=" * 60)
