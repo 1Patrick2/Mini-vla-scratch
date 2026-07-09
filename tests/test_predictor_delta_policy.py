@@ -7,6 +7,7 @@ from typing import Any, Dict
 import torch
 
 from mini_vla.inference.predictor import Predictor
+from mini_vla.models import build_model
 from mini_vla.training.checkpoint import save_checkpoint
 
 # ── Minimal config for a delta_action_bc policy ────────────────────────
@@ -65,3 +66,29 @@ class TestPredictorDeltaPassthrough:
         # The predicted action should be close to prev_action (model predicts near-zero delta)
         # Since model is untrained, this is a sanity check
         assert torch.isfinite(action).all()
+
+    def test_zero_delta_reconstructs_prev_action(self, tmp_path):
+        """When model predicts zero delta, predict() should return prev_action."""
+        ckpt = tmp_path / "test3.pt"
+        model = build_model(DELTA_CFG)
+        save_checkpoint(ckpt, model=model, epoch=1, metrics={"loss": 0.0}, config=DELTA_CFG)
+
+        predictor = Predictor(DELTA_CFG, ckpt, device="cpu", clip_action=False)
+
+        # Monkey-patch the policy's model to return zero delta
+        def zero_delta_forward(batch):
+            batch_size = batch["state"].shape[0]
+            return torch.zeros(batch_size, 2)
+
+        predictor._policy.model.forward = zero_delta_forward
+
+        sample = {
+            "image": torch.randn(3, 64, 64),
+            "input_ids": torch.randint(0, 128, (16,)),
+            "attention_mask": torch.ones(16, dtype=torch.long),
+            "state": torch.randn(6),
+            "prev_action": torch.tensor([10.0, 10.0]),
+        }
+
+        action = predictor.predict(sample)
+        assert torch.allclose(action, torch.tensor([10.0, 10.0]), atol=1e-6)

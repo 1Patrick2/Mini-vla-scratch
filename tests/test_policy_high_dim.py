@@ -6,6 +6,7 @@ These tests validate that policies work with dimensions similar to ALOHA
 
 from __future__ import annotations
 
+import copy
 from typing import Any, Dict
 
 import pytest
@@ -42,7 +43,7 @@ def _high_dim_batch(state_dim: int = 14, action_dim: int = 14):
 
 class TestHighDimSingleFrame:
     def test_compute_loss(self):
-        cfg = HIGH_DIM_CFG.copy()
+        cfg = copy.deepcopy(HIGH_DIM_CFG)
         cfg["policy"] = {"type": "single_frame_bc"}
         policy = build_policy(cfg)
         batch = _high_dim_batch()
@@ -50,7 +51,7 @@ class TestHighDimSingleFrame:
         assert out["loss"].item() >= 0
 
     def test_predict_action_shape(self):
-        cfg = HIGH_DIM_CFG.copy()
+        cfg = copy.deepcopy(HIGH_DIM_CFG)
         cfg["policy"] = {"type": "single_frame_bc"}
         policy = build_policy(cfg)
         batch = _high_dim_batch()
@@ -59,7 +60,7 @@ class TestHighDimSingleFrame:
 
     def test_action_dim_via_shape_meta(self):
         """If shape_meta.action.dim is set, policy should use it."""
-        cfg = HIGH_DIM_CFG.copy()
+        cfg = copy.deepcopy(HIGH_DIM_CFG)
         cfg["shape_meta"] = {"action": {"dim": 14}, "state": {"dim": 14}}
         cfg["policy"] = {"type": "single_frame_bc"}
         policy = build_policy(cfg)
@@ -68,7 +69,7 @@ class TestHighDimSingleFrame:
 
 class TestHighDimHistory:
     def test_compute_loss(self):
-        cfg = HIGH_DIM_CFG.copy()
+        cfg = copy.deepcopy(HIGH_DIM_CFG)
         cfg["model"]["state_dim"] = 14 + 14 + 14  # state + prev_state + prev_action
         cfg["policy"] = {"type": "history_bc"}
         policy = build_policy(cfg)
@@ -79,7 +80,7 @@ class TestHighDimHistory:
 
 class TestHighDimDelta:
     def test_compute_loss(self):
-        cfg = HIGH_DIM_CFG.copy()
+        cfg = copy.deepcopy(HIGH_DIM_CFG)
         cfg["model"]["state_dim"] = 14 + 14 + 14  # state + prev_state + prev_action
         cfg["policy"] = {"type": "delta_action_bc"}
         policy = build_policy(cfg)
@@ -88,7 +89,7 @@ class TestHighDimDelta:
         assert out["loss"].item() >= 0
 
     def test_predict_action_reconstructs_high_dim(self):
-        cfg = HIGH_DIM_CFG.copy()
+        cfg = copy.deepcopy(HIGH_DIM_CFG)
         cfg["model"]["state_dim"] = 42
         cfg["policy"] = {"type": "delta_action_bc"}
         policy = build_policy(cfg)

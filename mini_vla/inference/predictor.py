@@ -72,10 +72,14 @@ class Predictor:
         runs the model under ``torch.no_grad()``, and returns a 1-D CPU
         action tensor, optionally clipped to ``[-action_limit, action_limit]``.
 
+        For history/delta policies, optional fields such as ``prev_action``
+        and ``prev_state`` are passed through to the policy when present.
+
         Args:
-            sample: Single sample dict with keys ``image`` [3,H,W],
-                ``input_ids`` [T], ``attention_mask`` [T], ``state`` [2].
-                Extra keys (``action``, ``instruction``, etc.) are ignored.
+            sample: Single sample dict with key ``image`` [3,H,W],
+                ``input_ids`` [T], ``attention_mask`` [T], ``state`` [state_dim].
+                For delta or history policies, ``prev_action`` / ``prev_action_normalized``
+                and ``prev_state`` are also read from the sample when present.
 
         Returns:
             Tensor[action_dim] on CPU — the predicted action.
