@@ -148,6 +148,19 @@ class TestPredictorOutput:
             f"Predictor output {pred} differs from manual forward {manual_pred}"
         )
 
+    def test_predict_dict_returns_action(self):
+        """predict_dict should return a dict with an 'action' key."""
+        out = self.predictor.predict_dict(self.sample)
+        assert "action" in out
+        assert out["action"].shape == (2,)
+        assert torch.isfinite(out["action"]).all()
+
+    def test_predict_matches_predict_dict_action(self):
+        """predict() should return the same action as predict_dict()['action']."""
+        out = self.predictor.predict_dict(self.sample)
+        action = self.predictor.predict(self.sample)
+        assert torch.allclose(action, out["action"])
+
 
 class TestInferenceQuality:
     """Inference quality: trained Predictor should have lower loss than initial model."""

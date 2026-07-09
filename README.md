@@ -62,7 +62,7 @@ python -m pytest tests/test_evaluate_pusht_cli.py -m realdata
 - Toy 2D episode data generation (`episode.json` + RGB frames)
 - Toy2DDataset with per-episode loading
 - Minimal instruction tokenizer with `attention_mask` support
-- DataLoader collation (`collate_toy_2d`)
+- DataLoader collation (`collate_minivla_batch`, with `collate_toy_2d` compatibility alias)
 - SmallCNNVisionEncoder, LLM-ready TextBackbone, StateEncoder, FusionMLP, ActionHead
 - MiniVLA end-to-end forward with config-driven builder
 - MSE behavior cloning loss, optimizer with frozen parameter filtering
