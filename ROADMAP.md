@@ -232,7 +232,7 @@ split, train-only normalization, and history/delta action policy variants.
 
 ---
 
-## Stage 8: Policy × Dataset Matrix ⏳
+## Stage 8: Policy × Dataset Matrix ✅ Complete
 
 **Goal:** Upgrade MiniVLA from a PushT-only strict benchmark into a lightweight
 policy × dataset framework.
@@ -241,7 +241,7 @@ policy × dataset framework.
 - Policy registry and ``BasePolicy`` unified interface
 - ``shape_meta`` utilities (dimension resolution, no more hard-coded 2)
 - SingleFrame / History / DeltaAction migrated to policy interface
-- ActionChunk BC smoke (chunk regression with episode-safe chunking)
+- ActionChunk BC smoke (PushT train/eval verified, episode-safe chunking)
 - PushT full benchmark retained
 - ALOHA sim training smoke configs
 - LIBERO inspect/language feasibility retained

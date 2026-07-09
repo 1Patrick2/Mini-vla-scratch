@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 import torch
 from torch.utils.data import DataLoader
 
-from mini_vla.datasets.collate import collate_toy_2d
+from mini_vla.datasets.collate import collate_minivla_batch
 from mini_vla.datasets.factory import build_dataset
 from mini_vla.models import build_model
 from mini_vla.training.checkpoint import save_checkpoint
@@ -75,7 +75,7 @@ class Trainer:
             ds,
             batch_size=data_cfg["batch_size"],
             shuffle=True,
-            collate_fn=collate_toy_2d,
+            collate_fn=collate_minivla_batch,
             num_workers=data_cfg.get("num_workers", 0),
         )
 

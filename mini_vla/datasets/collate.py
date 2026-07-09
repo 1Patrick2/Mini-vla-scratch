@@ -1,11 +1,11 @@
-"""Batch collation for Toy 2D dataset.
+"""Batch collation for MiniVLA.
 
-Takes a list of ``Toy2DDataset`` samples and produces a batched dict
-ready for model training.
+``collate_minivla_batch`` is the primary collation function.  It handles
+Toy 2D, PushT, ALOHA, and robot-dataset samples with automatic
+passthrough of additional fields (``action_chunk``, ``prev_action``,
+``prev_state``, metadata, etc.).
 
-Supports automatic passthrough of additional fields (``action_chunk``,
-``prev_action``, ``prev_state``, metadata, etc.) beyond the standard
-five keys.
+``collate_toy_2d`` is retained as a backward-compatible alias.
 """
 
 from __future__ import annotations
@@ -15,8 +15,8 @@ from typing import Any, Dict, List
 import torch
 
 
-def collate_toy_2d(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Collate a list of Toy 2D samples into a training batch.
+def collate_minivla_batch(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Collate a list of MiniVLA samples into a training batch.
 
     Standard keys (``image``, ``input_ids``, ``attention_mask``, ``state``,
     ``action``) are always present with their original behaviour.
@@ -24,6 +24,9 @@ def collate_toy_2d(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
     Additional keys present in the batch samples are automatically passed
     through: tensor fields with matching shapes are stacked, scalars become
     tensors, and non-tensor metadata is preserved as a list.
+
+    This collation works for Toy 2D, PushT, and general robot datasets
+    (ALOHA, LIBERO, etc.) because it does not assume a fixed key set.
 
     Args:
         batch: List of dicts from ``Toy2DDataset.__getitem__`` or
@@ -74,7 +77,6 @@ def collate_toy_2d(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
         if all(isinstance(v, torch.Tensor) and v.shape == values[0].shape for v in values):  # noqa: E501
             result[key] = torch.stack(values)
         elif all(isinstance(v, torch.Tensor) and v.ndim == 0 for v in values):
-            # Zero-dim scalars
             result[key] = torch.stack(values)
         elif all(isinstance(v, (int, float)) for v in values):
             result[key] = torch.tensor(values)
@@ -87,6 +89,16 @@ def collate_toy_2d(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
     return result
 
 
+def collate_toy_2d(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Backward-compatible alias for :func:`collate_minivla_batch`.
+
+    Retained so that Stage 1–7 tests and scripts continue to work
+    without changes.
+    """
+    return collate_minivla_batch(batch)
+
+
 __all__ = [
+    "collate_minivla_batch",
     "collate_toy_2d",
 ]

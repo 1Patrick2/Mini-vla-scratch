@@ -21,7 +21,7 @@ image + instruction + state → action
 | Stage 5 | PushT Dataset Evaluation | ✅ 完成 |
 | Stage 6 | Dataset Zoo + Action Normalization | ✅ 完成 |
 | Stage 7 | Strict Episode Split + History/Delta BC | ✅ 完成 (2026-07-08) |
-| Stage 8 | Policy × Dataset Matrix | ⏳ 进行中 |
+| Stage 8 | Policy × Dataset Matrix | ✅ 完成 (2026-07-09) |
 | Stage 9 | Export / Deployment | 🔮 |
 
 ---

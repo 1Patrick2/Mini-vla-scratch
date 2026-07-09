@@ -121,24 +121,10 @@ def main() -> None:
             else torch.tensor(gt_chunk)
         )
 
-        # For full chunk we need to run predict_action through the policy
-        # Build a batch of size 1
-        batch = {
-            "image": sample["image"].unsqueeze(0).to(args.device),
-            "input_ids": sample["input_ids"].unsqueeze(0).to(args.device),
-            "state": sample["state"].unsqueeze(0).to(args.device),
-        }
-        if "attention_mask" in sample:
-            batch["attention_mask"] = sample["attention_mask"].unsqueeze(0).to(args.device)
-
-        with torch.no_grad():
-            if predictor._policy is not None:
-                out = predictor._policy.predict_action(batch)
-                pred_chunk = out.get("action_chunk", out["action"].unsqueeze(1))
-            else:
-                raise RuntimeError("ActionChunk eval requires a policy, not raw model.")
-
-        pred_chunks.append(pred_chunk.squeeze(0).cpu())
+        # Use Predictor.predict_dict (avoids accessing _policy directly)
+        out = predictor.predict_dict(sample)
+        pred_chunk = out.get("action_chunk", out["action"].unsqueeze(0))
+        pred_chunks.append(pred_chunk)
 
         entry: Dict[str, Any] = {
             "pred_action_chunk": pred_chunks[-1].tolist(),

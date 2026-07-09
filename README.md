@@ -10,7 +10,7 @@ image + instruction + state -> action
 
 ## Current Stage
 
-**Stage 8: Policy × Dataset Matrix — In progress.**
+**Stage 8: Policy × Dataset Matrix — Complete.**
 
 MiniVLA now supports a policy abstraction layer and a Policy × Dataset Matrix, including PushT full benchmark results and ALOHA sim training smoke support.
 
@@ -78,10 +78,10 @@ python -m pytest tests/test_evaluate_pusht_cli.py -m realdata
 - **Data-integrity audit** for reproducibility
 - **Policy abstraction** with registry (SingleFrame / History / DeltaAction / ActionChunk)
 - **shape_meta** for multi-dataset dimension resolution
-- **ActionChunk BC** (action chunk regression with episode-safe chunking)
+- **ActionChunk BC** smoke (PushT train/eval verified) with episode-safe chunking
 - **Policy × Dataset Matrix** runner and audit
 - **ALOHA sim training smoke** configs
-- 323+ unit tests
+- Comprehensive unit and smoke tests
 
 ## Planned
 

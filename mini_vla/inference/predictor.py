@@ -1,9 +1,10 @@
 """Predictor / Policy inference for MiniVLA.
 
-Loads a trained checkpoint and provides ``predict()`` and ``select_action()``
-for single-sample inference following LeRobot-style policy API.
+Loads a trained checkpoint and provides ``predict()``, ``predict_dict()``,
+and ``select_action()`` for single-sample inference.
 
-Supports both legacy raw-MiniVLA checkpoints and new policy-based checkpoints.
+Supports both legacy raw-MiniVLA checkpoints and new policy-based checkpoints,
+including ActionChunk policies that return full chunk dicts.
 """
 
 from __future__ import annotations
@@ -65,26 +66,8 @@ class Predictor:
         "delta_action_normalized",
     ]
 
-    def predict(self, sample: Dict[str, torch.Tensor]) -> torch.Tensor:
-        """Run inference on a single dataset sample.
-
-        Automatically batchifies the sample (adds a batch dimension),
-        runs the model under ``torch.no_grad()``, and returns a 1-D CPU
-        action tensor, optionally clipped to ``[-action_limit, action_limit]``.
-
-        For history/delta policies, optional fields such as ``prev_action``
-        and ``prev_state`` are passed through to the policy when present.
-
-        Args:
-            sample: Single sample dict with key ``image`` [3,H,W],
-                ``input_ids`` [T], ``attention_mask`` [T], ``state`` [state_dim].
-                For delta or history policies, ``prev_action`` / ``prev_action_normalized``
-                and ``prev_state`` are also read from the sample when present.
-
-        Returns:
-            Tensor[action_dim] on CPU — the predicted action.
-        """
-        # Build a batch of size 1
+    def _build_batch(self, sample: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """Build a single-sample batch from a dataset sample dict."""
         batch: Dict[str, torch.Tensor] = {
             "image": sample["image"].unsqueeze(0).to(self.device),
             "input_ids": sample["input_ids"].unsqueeze(0).to(self.device),
@@ -94,26 +77,60 @@ class Predictor:
             batch["attention_mask"] = (
                 sample["attention_mask"].unsqueeze(0).to(self.device)
             )
-
         # Pass through optional keys (needed for delta/history reconstruction)
         for key in self._OPTIONAL_KEYS:
             if key in sample and isinstance(sample[key], torch.Tensor):
                 batch[key] = sample[key].unsqueeze(0).to(self.device)
+        return batch
 
-        # Use policy predict_action if available (handles delta reconstruction)
-        if self._policy is not None:
-            with torch.no_grad():
+    def predict_dict(self, sample: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """Run inference and return the full policy output dict.
+
+        The returned dict depends on the policy type:
+
+        * Single-step policies (SingleFrame, History, DeltaAction):
+          ``{"action": Tensor[action_dim]}``
+        * ActionChunk policy:
+          ``{"action": Tensor[action_dim], "action_chunk": Tensor[H, action_dim]}``
+
+        Args:
+            sample: Single sample dict with keys ``image`` [3,H,W],
+                ``input_ids`` [T], ``attention_mask`` [T], ``state`` [state_dim].
+
+        Returns:
+            Dictionary of output tensors on CPU.
+        """
+        batch = self._build_batch(sample)
+
+        with torch.no_grad():
+            if self._policy is not None:
                 out = self._policy.predict_action(batch)
-            action = out["action"].squeeze(0).cpu()
-        else:
-            with torch.no_grad():
-                action_pred = self.model(batch)  # Tensor[1, action_dim]
-            action = action_pred.squeeze(0).cpu()
+            else:
+                pred = self.model(batch)
+                out = {"action": pred}
 
-        if self.clip_action:
-            action = torch.clamp(action, -self.action_limit, self.action_limit)
+        # Move to CPU and squeeze batch dim
+        result: Dict[str, torch.Tensor] = {}
+        for key, val in out.items():
+            squeezed = val.squeeze(0).cpu()
+            if key == "action" and self.clip_action:
+                squeezed = torch.clamp(squeezed, -self.action_limit, self.action_limit)
+            result[key] = squeezed
 
-        return action
+        return result
+
+    def predict(self, sample: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """Run inference and return the predicted action tensor.
+
+        Convenience method equivalent to ``predict_dict(sample)["action"]``.
+
+        Args:
+            sample: Single sample dict.
+
+        Returns:
+            Tensor[action_dim] on CPU — the predicted action.
+        """
+        return self.predict_dict(sample)["action"]
 
     def select_action(self, observation: Dict[str, torch.Tensor]) -> torch.Tensor:
         """Policy-style API: select an action from an observation.
