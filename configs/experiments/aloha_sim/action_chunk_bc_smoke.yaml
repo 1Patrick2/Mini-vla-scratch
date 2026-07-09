@@ -29,7 +29,8 @@ shape_meta:
 model:
   name: mini_vla
   state_dim: 14
-  action_dim: 56  # flattened: 4 * 14
+  # flattened: action_horizon * base_action_dim = 4 * 14
+  action_dim: 56
   state_encoder:
     input_dim: 14
 

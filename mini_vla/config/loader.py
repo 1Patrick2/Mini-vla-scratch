@@ -60,9 +60,28 @@ def _parse_simple_yaml(text: str, path: Path) -> dict[str, Any]:
             parent[key] = child
             stack.append((indent, child))
         else:
-            parent[key] = _parse_scalar(raw_value)
+            cleaned = _strip_inline_comment(raw_value)
+            parent[key] = _parse_scalar(cleaned)
 
     return root
+
+
+def _strip_inline_comment(value: str) -> str:
+    """Strip inline comments (``# ...``) while preserving ``#`` inside quotes.
+
+    Supports both single and double quotes.
+    """
+    in_single = False
+    in_double = False
+    for i, ch in enumerate(value):
+        if ch == "'" and not in_double:
+            in_single = not in_single
+        elif ch == '"' and not in_single:
+            in_double = not in_double
+        elif ch == "#" and not in_single and not in_double:
+            if i == 0 or value[i - 1].isspace():
+                return value[:i].rstrip()
+    return value
 
 
 def _parse_scalar(value: str) -> Any:
