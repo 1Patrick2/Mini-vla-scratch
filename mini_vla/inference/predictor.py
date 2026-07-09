@@ -52,6 +52,19 @@ class Predictor:
         load_checkpoint(checkpoint_path, self.model, device=self.device)
         self.model.eval()
 
+    # Optional tensor keys to pass through for delta/history reconstruction
+    _OPTIONAL_KEYS = [
+        "prev_action",
+        "prev_action_raw",
+        "prev_action_normalized",
+        "prev_state",
+        "prev_state_raw",
+        "prev_state_normalized",
+        "delta_action",
+        "delta_action_raw",
+        "delta_action_normalized",
+    ]
+
     def predict(self, sample: Dict[str, torch.Tensor]) -> torch.Tensor:
         """Run inference on a single dataset sample.
 
@@ -77,6 +90,11 @@ class Predictor:
             batch["attention_mask"] = (
                 sample["attention_mask"].unsqueeze(0).to(self.device)
             )
+
+        # Pass through optional keys (needed for delta/history reconstruction)
+        for key in self._OPTIONAL_KEYS:
+            if key in sample and isinstance(sample[key], torch.Tensor):
+                batch[key] = sample[key].unsqueeze(0).to(self.device)
 
         # Use policy predict_action if available (handles delta reconstruction)
         if self._policy is not None:

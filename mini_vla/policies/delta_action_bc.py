@@ -2,7 +2,12 @@
 
 Input:  image + instruction + state + prev_state + prev_action
 Output: delta_action (residual = action_t - prev_action_t)
-Target: MSE on delta_action; reconstructed via prev_action + pred_delta
+Target: MSE on delta_action; reconstructed via ``prev_action + pred_delta``.
+
+The underlying MiniVLA model receives the concatenated history state
+configured through ``shape_meta`` / ``model.state_dim``.  The delta
+reconstruction (``pred_action = prev_action + pred_delta``) is handled
+inside :meth:`predict_action`.
 """
 
 from __future__ import annotations

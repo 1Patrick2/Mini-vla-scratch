@@ -13,6 +13,7 @@ from typing import Any, Dict
 import torch
 import torch.nn as nn
 
+from mini_vla.datasets.shape_meta import get_action_dim
 from mini_vla.models import build_model
 
 
@@ -67,7 +68,12 @@ class BasePolicy(nn.Module, ABC):
 
     def get_action_dim(self) -> int:
         """Return the action dimension that this policy predicts."""
-        return self._config.get("model", self._config).get("action_dim", 2)
+        return get_action_dim(self._config)
+
+    def get_state_dim(self) -> int:
+        """Return the state dimension expected by this policy."""
+        from mini_vla.datasets.shape_meta import get_state_dim
+        return get_state_dim(self._config)
 
     def supports_action_chunk(self) -> bool:
         return False

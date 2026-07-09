@@ -3,6 +3,10 @@
 Input:  image + instruction + state + prev_state + prev_action
 Output: action (single step)
 Target: absolute action regression with temporal context
+
+The underlying MiniVLA model receives the concatenated history state
+constructed by the dataset wrapper, typically ``state + prev_state + prev_action``.
+The exact input dimension is configured through ``shape_meta`` / ``model.state_dim``.
 """
 
 from __future__ import annotations
@@ -20,8 +24,7 @@ class HistoryBCPolicy(BasePolicy):
     """History-augmented Behavior Cloning policy.
 
     Receives previous state/action as additional input and predicts
-    the current action.  The underlying MiniVLA model is expected to
-    have ``state_dim=6`` (state + prev_state + prev_action concatenated).
+    the current action.
     """
 
     policy_type = "history_bc"
