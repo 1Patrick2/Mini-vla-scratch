@@ -1,0 +1,39 @@
+# PushT ActionChunk BC smoke config
+# Uses action_horizon=4 with flattened model output.
+dataset:
+  name: pusht
+  repo_id: lerobot/pusht
+  loader: lerobot
+  max_samples: 512
+  batch_size: 4
+  num_workers: 0
+  image_size: 64
+  max_text_len: 16
+  split:
+    enabled: true
+    path: outputs/splits/pusht_seed42_80_20_split.json
+    name: train
+  target:
+    type: action_chunk
+    action_horizon: 4
+
+policy:
+  type: action_chunk_bc
+
+shape_meta:
+  state:
+    dim: 2
+  action:
+    dim: 2
+  obs_horizon: 1
+  action_horizon: 4
+
+model:
+  state_dim: 2
+  action_dim: 8  # flattened: action_horizon * action_dim
+
+train:
+  epochs: 1
+  lr: 0.001
+  device: cpu
+  output_dir: outputs/runs/pusht_action_chunk_smoke/checkpoints

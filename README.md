@@ -10,32 +10,26 @@ image + instruction + state -> action
 
 ## Current Stage
 
-**Stage 7: Strict Episode Split + History/Delta BC — Complete.**
+**Stage 8: Policy × Dataset Matrix — In progress.**
 
-A strict offline Behavior Cloning benchmark on real LeRobot PushT data with episode-level train/eval split, train-only normalization, and three BC variants.
+MiniVLA now supports a policy abstraction layer and a Policy × Dataset Matrix, including PushT full benchmark results and ALOHA sim training smoke support.
 
-## Stage 7: Robot Learning Benchmark
+## Policy × Dataset Matrix
 
-| Model | Raw MAE | Takeaway |
-|-------|--------:|----------|
-| SingleFrame BC | 19.51 | current-frame baseline |
-| History BC | 11.02 | +temporal context |
-| DeltaAction BC | **7.35** | **best learned variant** |
+| Dataset | Status | Policies |
+|---------|--------|----------|
+| PushT | full benchmark | SingleFrame / History / DeltaAction / ActionChunk smoke |
+| ALOHA sim | training smoke | SingleFrame / History / ActionChunk |
+| LIBERO | inspect feasibility | language/multitask candidate |
 
-**Protocol:** episode-level split (6 train / 2 eval episodes, 1024 samples), train-only normalization, raw action space metrics, baseline reports.
+| Policy | Output | Purpose |
+|--------|--------|---------|
+| SingleFrame BC | action | current-frame baseline |
+| History BC | action | temporal context |
+| DeltaAction BC | delta action | residual action prediction |
+| ActionChunk BC | future action chunk | chunked policy smoke |
 
-DeltaAction BC reduces raw MAE by **33.3%** over History BC and **62.3%** over SingleFrame BC on strictly unseen episodes.
-
-### Key components
-
-- `create_episode_split.py` — reproducible episode-level split manifest
-- `compute_dataset_stats.py` — train-only normalization statistics
-- Three configs: `pusht_strict_single_frame.yaml`, `pusht_strict_history.yaml`, `pusht_strict_delta.yaml`
-- `evaluate_robot_dataset.py` — raw/normalized action evaluation with baselines
-- `compare_eval_reports.py` — cross-method comparison table
-- `audit_stage7_outputs.py` — data-integrity audit
-
-See [docs/15](docs/15_strict_episode_split_and_history_delta_bc.md) for full protocol and results.
+See [docs/16](docs/16_policy_dataset_matrix.md) for full design and [docs/15](docs/15_strict_episode_split_and_history_delta_bc.md) for PushT results.
 
 ## Quickstart
 
@@ -82,6 +76,12 @@ python -m pytest tests/test_evaluate_pusht_cli.py -m realdata
 - **Raw action evaluation** with baseline reports
 - **DeltaAction** is the best learned variant (raw MAE=7.35)
 - **Data-integrity audit** for reproducibility
+- **Policy abstraction** with registry (SingleFrame / History / DeltaAction / ActionChunk)
+- **shape_meta** for multi-dataset dimension resolution
+- **ActionChunk BC** (action chunk regression with episode-safe chunking)
+- **Policy × Dataset Matrix** runner and audit
+- **ALOHA sim training smoke** configs
+- 323+ unit tests
 
 ## Planned
 

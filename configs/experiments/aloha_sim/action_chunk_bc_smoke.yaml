@@ -1,0 +1,34 @@
+# ALOHA sim ActionChunk BC smoke config
+# NOTE: state_dim/action_dim are placeholders — verify via inspect_shape_meta.py.
+# CPU-friendly: 1 epoch, 128 max_samples, small batch.
+dataset:
+  name: aloha_sim_transfer_cube
+  repo_id: lerobot/aloha_sim_transfer_cube_scripted
+  loader: lerobot
+  max_samples: 128
+  batch_size: 8
+  num_workers: 0
+  strict: false
+  target:
+    type: action_chunk
+    action_horizon: 4
+
+policy:
+  type: action_chunk_bc
+
+shape_meta:
+  state:
+    dim: 14
+  action:
+    dim: 14
+  action_horizon: 4
+
+model:
+  state_dim: 14
+  action_dim: 56  # flattened: 4 * 14
+
+train:
+  epochs: 1
+  lr: 0.001
+  device: cpu
+  output_dir: outputs/runs/aloha_smoke_action_chunk/checkpoints

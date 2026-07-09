@@ -182,3 +182,89 @@ class DeltaActionTargetWrapper:
             sample["action"] = sample["delta_action_raw"]
 
         return sample
+
+
+class ActionChunkTargetWrapper:
+    """Transform training target from single action to action chunk.
+
+    For sample at index ``t``, the target becomes a sequence of future
+    actions ``[action_t, action_{t+1}, ..., action_{t+H-1}]``.
+
+    Episode boundary is respected: samples within ``H-1`` frames of the
+    end of an episode are dropped to avoid cross-episode leakage.
+
+    Args:
+        dataset: Sequence of sample dicts with ``action`` and
+            ``episode_index`` (may also have ``action_raw`` / ``action_normalized``).
+        action_horizon: Number of future steps to chunk (``H``).
+    """
+
+    def __init__(
+        self,
+        dataset: Sequence[Dict[str, Any]],
+        action_horizon: int = 4,
+    ) -> None:
+        if action_horizon < 1:
+            raise ValueError(
+                f"action_horizon must be >= 1, got {action_horizon}"
+            )
+        self.dataset = dataset
+        self.action_horizon = action_horizon
+        self._valid_indices = self._build_valid_indices()
+
+    def _build_valid_indices(self) -> list[int]:
+        """Build a list of dataset indices that have enough future frames."""
+        # Group indices by episode
+        ep_to_indices: Dict[int, list[int]] = {}
+        for i in range(len(self.dataset)):
+            s = self.dataset[i]
+            ep = s.get("episode_index")
+            if isinstance(ep, torch.Tensor):
+                ep = ep.item()
+            ep_int = int(ep) if ep is not None else 0
+            ep_to_indices.setdefault(ep_int, []).append(i)
+
+        valid: list[int] = []
+        for ep_id in sorted(ep_to_indices.keys()):
+            indices = ep_to_indices[ep_id]
+            # Only keep starts that have H consecutive frames in this episode
+            for j in range(len(indices) - self.action_horizon + 1):
+                valid.append(indices[j])
+        return valid
+
+    def __len__(self) -> int:
+        return len(self._valid_indices)
+
+    def __getitem__(self, idx: int) -> Dict[str, Any]:
+        base_idx = self._valid_indices[idx]
+        base = self.dataset[base_idx]
+        H = self.action_horizon
+
+        # Clone the base sample (avoids polluting underlying dataset)
+        sample: Dict[str, Any] = {
+            k: v.clone() if isinstance(v, torch.Tensor) else v
+            for k, v in base.items()
+        }
+
+        # Build chunk targets
+        chunk_list: list[torch.Tensor] = []
+        for step in range(H):
+            s = self.dataset[base_idx + step]
+            act = s["action"]
+            chunk_list.append(act if isinstance(act, torch.Tensor) else torch.tensor(act))
+
+        sample["action_chunk"] = torch.stack(chunk_list)  # [H, action_dim]
+        sample["target_type"] = "action_chunk"
+        sample["action_horizon"] = H
+
+        # Also build raw/normalized chunks if available
+        if "action_raw" in base:
+            raw_list = [self.dataset[base_idx + step]["action_raw"] for step in range(H)]
+            sample["action_chunk_raw"] = torch.stack(raw_list)
+        if "action_normalized" in base:
+            norm_list = [
+                self.dataset[base_idx + step]["action_normalized"] for step in range(H)
+            ]
+            sample["action_chunk_normalized"] = torch.stack(norm_list)
+
+        return sample

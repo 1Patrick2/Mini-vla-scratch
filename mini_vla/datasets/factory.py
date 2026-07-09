@@ -149,6 +149,13 @@ def _build_robot_dataset(
             )
         dataset = DeltaActionTargetWrapper(dataset)
 
+    if target_cfg.get("type") == "action_chunk":
+        from mini_vla.datasets.transforms import ActionChunkTargetWrapper
+        dataset = ActionChunkTargetWrapper(
+            dataset,
+            action_horizon=target_cfg.get("action_horizon", 4),
+        )
+
     return dataset
 
 

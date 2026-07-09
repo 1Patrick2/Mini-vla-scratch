@@ -1,0 +1,50 @@
+# Stage 8 Policy × Dataset Matrix
+# Entries with mode: report_only read existing reports.
+# Entries with mode: smoke run train/eval on 1 epoch.
+matrix:
+  - dataset: pusht
+    policy: single_frame_bc
+    status: full_benchmark
+    mode: report_only
+    report: outputs/eval/pusht_strict_single_frame_report.json
+
+  - dataset: pusht
+    policy: history_bc
+    status: full_benchmark
+    mode: report_only
+    report: outputs/eval/pusht_strict_history_report.json
+
+  - dataset: pusht
+    policy: delta_action_bc
+    status: full_benchmark
+    mode: report_only
+    report: outputs/eval/pusht_strict_delta_report.json
+
+  - dataset: pusht
+    policy: action_chunk_bc
+    status: smoke
+    mode: smoke
+    report: outputs/eval/pusht_action_chunk_smoke_report.json
+
+  - dataset: aloha_sim_transfer_cube
+    policy: single_frame_bc
+    status: smoke
+    mode: smoke
+    report: outputs/eval/aloha_sim_single_frame_smoke_report.json
+
+  - dataset: aloha_sim_transfer_cube
+    policy: history_bc
+    status: smoke
+    mode: smoke
+    report: outputs/eval/aloha_sim_history_smoke_report.json
+
+  - dataset: aloha_sim_transfer_cube
+    policy: action_chunk_bc
+    status: smoke
+    mode: smoke
+    report: outputs/eval/aloha_sim_action_chunk_smoke_report.json
+
+  - dataset: libero
+    policy: inspect
+    status: feasibility
+    mode: report_only
