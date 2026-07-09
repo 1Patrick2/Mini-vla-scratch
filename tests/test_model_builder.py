@@ -307,3 +307,35 @@ class TestStateDimFallback:
         }
         out = model(batch)
         assert out.shape == (2, 2)
+
+
+class TestActionDimValidation:
+    """Builder must validate action_dim."""
+
+    def test_action_dim_none_raises(self):
+        config = {
+            "model": {
+                "action_dim": None,
+                "vision_encoder": {"type": "small_cnn", "output_dim": 128},
+                "text_encoder": {"type": "mock_llm", "output_dim": 128},
+                "state_encoder": {"output_dim": 128},
+                "fusion": {"type": "concat_mlp"},
+                "action_head": {"input_dim": 128},
+            }
+        }
+        with pytest.raises(ValueError, match="action_dim"):
+            build_model(config)
+
+    def test_action_dim_string_raises(self):
+        config = {
+            "model": {
+                "action_dim": "56",
+                "vision_encoder": {"type": "small_cnn", "output_dim": 128},
+                "text_encoder": {"type": "mock_llm", "output_dim": 128},
+                "state_encoder": {"output_dim": 128},
+                "fusion": {"type": "concat_mlp"},
+                "action_head": {"input_dim": 128},
+            }
+        }
+        with pytest.raises(ValueError, match="action_dim"):
+            build_model(config)

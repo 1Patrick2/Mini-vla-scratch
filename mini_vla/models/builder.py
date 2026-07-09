@@ -47,6 +47,14 @@ def build_model(config: Dict[str, Any]) -> MiniVLA:
 
     action_dim = cfg.get("action_dim", 2)
 
+    if not isinstance(action_dim, int) or action_dim < 1:
+        raise ValueError(
+            f"model.action_dim must be a positive integer, got {action_dim!r} "
+            f"(type: {type(action_dim).__name__}).\n"
+            "For ActionChunk BC, set model.action_dim = action_horizon * shape_meta.action.dim "
+            "(e.g., 4 * 14 = 56 for ALOHA)."
+        )
+
     # ── Vision encoder ──────────────────────────────────────────
     ve_cfg = cfg.get("vision_encoder", {})
     if ve_cfg.get("type", "small_cnn") != "small_cnn":
